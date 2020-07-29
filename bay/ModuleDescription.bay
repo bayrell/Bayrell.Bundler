@@ -18,9 +18,17 @@
 
 namespace Bayrell.Bundler;
 
+use Runtime.lib;
 use Runtime.fs;
-use Runtime.Annotations.LambdaChain;
-use Runtime.Annotations.LambdaChainDeclare;
+use Runtime.CoreStruct;
+use Runtime.Interfaces.ModuleDescriptionInterface;
+use Runtime.Core.Context;
+use Runtime.Core.Entity;
+use Runtime.Core.LambdaChain;
+use Runtime.Core.LambdaChain;
+use Runtime.Core.LambdaChainDeclare;
+use Bayrell.Bundler.BundlerHelper;
+use Bayrell.Bundler.Task;
 
 
 class ModuleDescription implements ModuleDescriptionInterface
@@ -65,6 +73,9 @@ class ModuleDescription implements ModuleDescriptionInterface
 		new LambdaChainDeclare{ "name": BundlerHelper::CHANGE_FILE_CHAIN },
 		new LambdaChainDeclare{ "name": BundlerHelper::BUILD_PROJECT },
 		new LambdaChainDeclare{ "name": BundlerHelper::BUILD_FILE },
+		
+		/* Add Entity */
+		new Entity{ "name": classof Task },
 		
 		/* Extend entities */
 		new LambdaChain
@@ -111,7 +122,7 @@ class ModuleDescription implements ModuleDescriptionInterface
 		"providers":
 		{
 		}
-	}
+	};
 	
 	
 	
@@ -130,6 +141,11 @@ class ModuleDescription implements ModuleDescriptionInterface
 	 */
 	static async Context appStart(Context c)
 	{
+		
+		/* Start */
+		return await c::start(c);
+		
+		
 		/* Read project.json from cwd */
 		string content = await fs::readFile("project.json", "utf8", @.cwd);
 		
@@ -139,8 +155,7 @@ class ModuleDescription implements ModuleDescriptionInterface
 		/* Set config */
 		c <= settings <= config <= "Bayrell.Bundler" <= json;
 		
-		/* Start */
-		return await c::start(c);
+		
 	}
 	
 	#endif

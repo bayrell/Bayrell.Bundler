@@ -20,6 +20,7 @@ namespace Bayrell.Bundler;
 
 use Runtime.Task.Annotations.TaskList;
 use Runtime.Task.Annotations.TaskMethod;
+use Bayrell.Bundler.BundlerHelper;
 
 
 @TaskList{}
@@ -40,7 +41,7 @@ class Task
 	 * Build project
 	 */
 	@TaskMethod{ "alias": "build" }
-	static async void watch()
+	static async void build()
 	{
 	}
 	
@@ -50,7 +51,7 @@ class Task
 	 * Show modules
 	 */
 	@TaskMethod{ "alias": "modules" }
-	static async void watch()
+	static async void modules()
 	{
 	}
 	
@@ -60,7 +61,7 @@ class Task
 	 * Make symlink
 	 */
 	@TaskMethod{ "alias": "make_symlink" }
-	static async void watch()
+	static async void make_symlink()
 	{
 	}
 	
@@ -70,7 +71,7 @@ class Task
 	 * Make symlinks
 	 */
 	@TaskMethod{ "alias": "make_symlinks" }
-	static async void watch()
+	static async void make_symlinks()
 	{
 	}
 	
@@ -80,11 +81,12 @@ class Task
 	 * Make module
 	 */
 	@TaskMethod{ "alias": "make" }
-	static async void watch()
+	static async void make()
 	{
 		int sz = @.cli_args.count();
 		string module_name = @.cli_args.get(2, "");
 		
+		var file;
 		file = @ -> await method chainAwait(BundlerHelper::BUILD_FILE, [ file ]);
 	}
 	
@@ -94,7 +96,7 @@ class Task
 	 * Make all modules
 	 */
 	@TaskMethod{ "alias": "make_all" }
-	static async void watch()
+	static async void make_all()
 	{
 	}
 	
