@@ -28,7 +28,6 @@ use Runtime.Core.LambdaChain;
 use Runtime.Core.LambdaChain;
 use Runtime.Core.LambdaChainDeclare;
 use Bayrell.Bundler.BundlerHelper;
-use Bayrell.Bundler.Task;
 
 
 class ModuleDescription implements ModuleDescriptionInterface
@@ -75,7 +74,7 @@ class ModuleDescription implements ModuleDescriptionInterface
 		new LambdaChainDeclare{ "name": BundlerHelper::BUILD_FILE },
 		
 		/* Add Entity */
-		new Entity{ "name": classof Task },
+		new Entity{ "name": "Bayrell.Bundler.Tasks" },
 		
 		/* Extend entities */
 		new LambdaChain
@@ -141,16 +140,15 @@ class ModuleDescription implements ModuleDescriptionInterface
 	 */
 	static async Context appStart(Context c)
 	{
+		/* Read project.json from cwd */
+		Dict json = await fs::readFile("project.json", "utf8", @.base_path) |> rtl::json_decode;
+		
+		log (json);
 		
 		/* Start */
 		return await c::start(c);
 		
 		
-		/* Read project.json from cwd */
-		string content = await fs::readFile("project.json", "utf8", @.cwd);
-		
-		/* Decode */
-		Dict json = rtl::json_decode(content);
 		
 		/* Set config */
 		c <= settings <= config <= "Bayrell.Bundler" <= json;

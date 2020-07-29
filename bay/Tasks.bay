@@ -18,13 +18,13 @@
 
 namespace Bayrell.Bundler;
 
-use Runtime.Task.Annotations.TaskList;
-use Runtime.Task.Annotations.TaskMethod;
+use Runtime.Task.TaskList;
+use Runtime.Task.TaskMethod;
 use Bayrell.Bundler.BundlerHelper;
 
 
 @TaskList{}
-class Task
+class Tasks
 {
 	
 	/**
@@ -85,9 +85,9 @@ class Task
 	{
 		int sz = @.cli_args.count();
 		string module_name = @.cli_args.get(2, "");
-		
+		/*
 		var file;
-		file = @ -> await method chainAwait(BundlerHelper::BUILD_FILE, [ file ]);
+		file = @ -> await method chainAwait(BundlerHelper::BUILD_FILE, [ file ]);*/
 	}
 	
 	
