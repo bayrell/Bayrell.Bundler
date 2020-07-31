@@ -140,20 +140,14 @@ class ModuleDescription implements ModuleDescriptionInterface
 	 */
 	static async Context appStart(Context c)
 	{
-		/* Read project.json from cwd */
-		Dict json = await fs::readFile("project.json", "utf8", @.base_path) |> rtl::json_decode;
-		
-		log (json);
-		
-		/* Start */
-		return await c::start(c);
-		
-		
+		/* Read project.json from base path */
+		Dict json = await fs::readFile("project.json", "utf8", @.base_path) |> rtl::json_decode |> default {};
 		
 		/* Set config */
 		c <= settings <= config <= "Bayrell.Bundler" <= json;
 		
-		
+		/* Start */
+		return await c::start(c);
 	}
 	
 	#endif

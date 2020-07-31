@@ -20,6 +20,7 @@ namespace Bayrell.Bundler;
 
 use Runtime.Task.TaskList;
 use Runtime.Task.TaskMethod;
+use Runtime.Task.TaskOutputProvider;
 use Bayrell.Bundler.BundlerHelper;
 
 
@@ -53,6 +54,18 @@ class Tasks
 	@TaskMethod{ "alias": "modules" }
 	static async void modules()
 	{
+		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		Collection<string> modules = BundlerHelper::getModules();
+		
+		/* Output list of modules */
+		output.writeln("Modules:");
+		modules.each
+		(
+			void (string module_name) use (output)
+			{
+				output.writeln("  " ~ module_name)
+			}
+		);
 	}
 	
 	
@@ -85,9 +98,12 @@ class Tasks
 	{
 		int sz = @.cli_args.count();
 		string module_name = @.cli_args.get(2, "");
-		/*
-		var file;
-		file = @ -> await method chainAwait(BundlerHelper::BUILD_FILE, [ file ]);*/
+		
+		Dict json = @.config("Bayrell.Bundler");
+		log(json);
+		
+		/*var file;
+		file = await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);*/
 	}
 	
 	
