@@ -71,6 +71,7 @@ class ModuleDescription implements ModuleDescriptionInterface
 		/* Declare Layout Chain */
 		new LambdaChainDeclare{ "name": BundlerHelper::CHANGE_FILE_CHAIN },
 		new LambdaChainDeclare{ "name": BundlerHelper::BUILD_PROJECT },
+		new LambdaChainDeclare{ "name": BundlerHelper::BUILD_MODULE },
 		new LambdaChainDeclare{ "name": BundlerHelper::BUILD_FILE },
 		
 		/* Add Entity */
@@ -81,6 +82,22 @@ class ModuleDescription implements ModuleDescriptionInterface
 		{
 			"name": "Runtime.Entities",
 			"value": "Bayrell.Bundler.ModuleDescription::extendEntities",
+		},
+		
+		/* Build module */
+		new LambdaChain
+		{
+			"name": BundlerHelper::BUILD_MODULE,
+			"value": "Bayrell.Bundler.BuildModule::loadFiles",
+			"is_async": true,
+			"pos": 1000,
+		},
+		new LambdaChain
+		{
+			"name": BundlerHelper::BUILD_MODULE,
+			"value": "Bayrell.Bundler.BuildModule::build",
+			"is_async": true,
+			"pos": 2000,
 		},
 	];
 	

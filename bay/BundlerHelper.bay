@@ -19,19 +19,27 @@
 namespace Bayrell.Bundler;
 
 use Runtime.fs;
+use Bayrell.Bundler.Module;
 
 
 class BundlerHelper
 {
 	static const string CHANGE_FILE_CHAIN = "Bayrell.Bundler.BundlerHelper::CHANGE_FILE_CHAIN";
 	static const string BUILD_PROJECT = "Bayrell.Bundler.BundlerHelper::BUILD_PROJECT";
+	static const string BUILD_MODULE = "Bayrell.Bundler.BundlerHelper::BUILD_MODULE";
 	static const string BUILD_FILE = "Bayrell.Bundler.BundlerHelper::BUILD_FILE";
+	
+	/* Chain pos */
+	static const int BUILD_FILE_FILTER = 1000;
+	static const int BUILD_FILE_READ_FILE = 2000;
+	static const int BUILD_FILE_AST = 3000;
+	static const int BUILD_FILE_SAVE_FILE = 4000;
 	
 	
 	/**
 	 * Returns modules from dirs
 	 */
-	static async Collection<string> getModules()
+	static async Collection<Module> getModules()
 	{
 		/*
 		Collection<string> items =
@@ -39,7 +47,7 @@ class BundlerHelper
 			|> "modules"
 			|> default []
 			|> .map( curry fs::concat(@.base_path, ?) )
-			|> await .mapAsync( curry fs::scanDir(?, @.base_path) )
+			|> await .mapAsync( curry fs::readDir(?, @.base_path) )
 			|> .flat(1)
 			|> default []
 		;
@@ -48,13 +56,23 @@ class BundlerHelper
 		Dict json = @.config("Bayrell.Bundler");
 		Collection<string> modules_dir = json.get("modules", []);
 		
-		Vector<string> items = new Vector();
-		
+		Vector<Module> items = new Vector();
 		for (int i=0; i<modules_dir.count(); i++)
 		{
 			string dir = modules_dir.item(i);
-			Collection arr = await fs::scanDir(dir, @.base_path);
-			items.appendVector(arr);
+			Collection arr = await fs::readDir(dir, @.base_path);
+			for (int j=0; j<arr.count(); j++)
+			{
+				string module_name = arr.item(j);
+				items.push
+				(
+					new Module
+					{
+						"module_name": module_name,
+						"relative_path": dir,
+					}
+				);
+			}
 		}
 		
 		return items.toCollection();

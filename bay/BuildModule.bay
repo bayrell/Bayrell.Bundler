@@ -1,0 +1,90 @@
+/*!
+ *  Bayrell Bundler
+ *
+ *  (c) Copyright 2020 "Ildar Bikmamatov" <support@bayrell.org>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+namespace Bayrell.Bundler;
+
+use Runtime.fs;
+use Runtime.rs;
+use Runtime.CoreStruct;
+use Bayrell.Bundler.BuildFile;
+use Bayrell.Bundler.BundlerHelper;
+use Bayrell.Bundler.Module;
+
+
+struct BuildModule extends CoreStruct
+{
+	Module module = null;
+	string module_path = "";
+	Collection<string> files = null;
+	bool stop = false;
+	
+	
+	/**
+	 * Load files
+	 */
+	async static BuildModule loadFiles(BuildModule build)
+	{
+		if (build.stop) return build;
+		if (build.module == null) return build;
+		
+		string module_path = fs::concat(build.module.relative_path, build.module.module_name);
+		string path = fs::concat(module_path, "bay");
+		
+		Collection<string> files = await fs::readDirectoryRecursive("", fs::concat(@.base_path, path));
+		build <= module_path <= module_path;
+		build <= files <= files;
+		
+		return build;
+	}
+	
+	
+	
+	/**
+	 * Build
+	 */
+	async static BuildModule build(BuildModule build)
+	{
+		if (build.stop) return build;
+		if (build.files == null) return build;
+		
+		Dict json = @.config("Bayrell.Bundler");
+		Collection<string> languages = json.get("languages");
+		
+		string files_path = fs::concat(build.module_path, "bay");
+		for (int i=0; i<build.files.count(); i++)
+		{
+			string file_name = fs::concat(files_path, build.files.item(i));
+			BuildFile file = new BuildFile
+			{
+				"relative_path": build.files.item(i),
+				"file_path": file_name,
+				"ext": rs::extname(file_name),
+				"module_path": build.module_path,
+				"languages": languages,
+			};
+			
+			log (file);
+			
+			/* Build file */
+			await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);
+		}
+		
+		return build;
+	}
+	
+}

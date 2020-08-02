@@ -21,7 +21,9 @@ namespace Bayrell.Bundler;
 use Runtime.Task.TaskList;
 use Runtime.Task.TaskMethod;
 use Runtime.Task.TaskOutputProvider;
+use Bayrell.Bundler.BuildModule;
 use Bayrell.Bundler.BundlerHelper;
+use Bayrell.Bundler.Module;
 
 
 @TaskList{}
@@ -61,9 +63,9 @@ class Tasks
 		output.writeln("Modules:");
 		modules.each
 		(
-			void (string module_name) use (output)
+			void (Module item) use (output)
 			{
-				output.writeln("  " ~ module_name)
+				output.writeln("  " ~ item.module_name)
 			}
 		);
 	}
@@ -98,12 +100,43 @@ class Tasks
 	{
 		int sz = @.cli_args.count();
 		string module_name = @.cli_args.get(2, "");
+		Collection<string> modules = BundlerHelper::getModules();
+		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		Module module = modules.findItem
+		(
+			bool (Module item) use (module_name) => item.module_name == module_name
+		);
 		
-		Dict json = @.config("Bayrell.Bundler");
-		log(json);
+		if (module_name == "")
+		{
+			output.writeln("Type module name:");
+			modules.each
+			(
+				void (Module item) use (output)
+				{
+					output.writeln("  " ~ item.module_name)
+				}
+			);
+			return;
+		}
+		else if (module == -1)
+		{
+			output.writeln("Wrong module name " ~ module_name);
+			return;
+		}
 		
-		/*var file;
-		file = await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);*/
+		/* Chain module build */
+		await @.chainAwait
+		(
+			BundlerHelper::BUILD_MODULE,
+			[
+				new BuildModule
+				{
+					"module": module
+				}
+			]
+		);
+		
 	}
 	
 	
