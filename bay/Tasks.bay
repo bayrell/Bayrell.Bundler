@@ -18,6 +18,8 @@
 
 namespace Bayrell.Bundler;
 
+use Runtime.fs;
+use Runtime.lib;
 use Runtime.Task.TaskList;
 use Runtime.Task.TaskMethod;
 use Runtime.Task.TaskOutputProvider;
@@ -43,10 +45,12 @@ class Tasks
 	/**
 	 * Build project
 	 */
+	/*
 	@TaskMethod{ "alias": "build" }
 	static async void build()
 	{
 	}
+	*/
 	
 	
 	
@@ -75,9 +79,20 @@ class Tasks
 	/**
 	 * Make symlink
 	 */
-	@TaskMethod{ "alias": "make_symlink" }
-	static async void make_symlink()
+	static async void make_link(string module_path, string assets_path, string kind)
 	{
+		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		string src = fs::concat(module_path, kind);
+		string dest = fs::concat(assets_path, kind);
+		string rel = fs::relative(assets_path, src);
+		
+		await fs::mkdir(assets_path, @.base_path);
+		if (await fs::exists(src, @.base_path))
+		{
+			await fs::unlink(dest, @.base_path);
+			await fs::symlink(rel, dest, @.base_path);
+			output.writeln(fs::concat(@.base_path, dest) ~ " -> " ~ rel);
+		}
 	}
 	
 	
@@ -88,6 +103,21 @@ class Tasks
 	@TaskMethod{ "alias": "make_symlinks" }
 	static async void make_symlinks()
 	{
+		Collection<Module> modules = BundlerHelper::getModules();
+		for (int i=0; i<modules.count(); i++)
+		{
+			Module module = modules.item(i);
+			
+			string module_path = fs::concat(module.relative_path, module.module_name);
+			string assets_path = fs::concat("/web/assets/", module.module_name);
+			
+			/* Resources folder */
+			static::make_link(module_path, assets_path, "resources");
+			
+			/* ES6 folder */
+			static::make_link(module_path, assets_path, "es6");
+		}
+		
 	}
 	
 	
@@ -100,12 +130,9 @@ class Tasks
 	{
 		int sz = @.cli_args.count();
 		string module_name = @.cli_args.get(2, "");
-		Collection<string> modules = BundlerHelper::getModules();
+		Collection<Module> modules = BundlerHelper::getModules();
 		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
-		Module module = modules.findItem
-		(
-			bool (Module item) use (module_name) => item.module_name == module_name
-		);
+		Module module = modules.findItem( lib::equalAttr("module_name", module_name) );
 		
 		if (module_name == "")
 		{

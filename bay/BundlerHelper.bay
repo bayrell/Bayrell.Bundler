@@ -32,7 +32,7 @@ class BundlerHelper
 	/* Chain pos */
 	static const int BUILD_FILE_FILTER = 1000;
 	static const int BUILD_FILE_READ_FILE = 2000;
-	static const int BUILD_FILE_AST = 3000;
+	static const int BUILD_FILE_PARSE_FILE = 3000;
 	static const int BUILD_FILE_SAVE_FILE = 4000;
 	
 	

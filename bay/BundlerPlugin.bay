@@ -19,7 +19,7 @@
 namespace Bayrell.Bundler;
 
 use Runtime.CoreStruct;
-use Runtime.Interfaces.ContextInterface;
+use Runtime.Core.Context;
 
 
 class BundlerPlugin
@@ -28,6 +28,6 @@ class BundlerPlugin
 	/**
 	 * Extend entities
 	 */
-	pure Collection<CoreStruct> extendEntities(ContextInterface c, Collection<CoreStruct> entities) => entities;
+	pure Collection<CoreStruct> extendEntities(Context c, Collection<CoreStruct> entities) => entities;
 	
 }

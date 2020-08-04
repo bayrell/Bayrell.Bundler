@@ -21,6 +21,7 @@ namespace Bayrell.Bundler;
 use Runtime.fs;
 use Runtime.rs;
 use Runtime.CoreStruct;
+use Runtime.Task.TaskOutputProvider;
 use Bayrell.Bundler.BuildFile;
 use Bayrell.Bundler.BundlerHelper;
 use Bayrell.Bundler.Module;
@@ -62,6 +63,7 @@ struct BuildModule extends CoreStruct
 		if (build.stop) return build;
 		if (build.files == null) return build;
 		
+		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
 		Dict json = @.config("Bayrell.Bundler");
 		Collection<string> languages = json.get("languages");
 		
@@ -78,7 +80,8 @@ struct BuildModule extends CoreStruct
 				"languages": languages,
 			};
 			
-			log (file);
+			/* Output file name */
+			output.writeln( fs::concat(@.base_path, file_name) );
 			
 			/* Build file */
 			await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);

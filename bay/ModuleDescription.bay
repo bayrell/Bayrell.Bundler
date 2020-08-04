@@ -25,7 +25,6 @@ use Runtime.Interfaces.ModuleDescriptionInterface;
 use Runtime.Core.Context;
 use Runtime.Core.Entity;
 use Runtime.Core.LambdaChain;
-use Runtime.Core.LambdaChain;
 use Runtime.Core.LambdaChainDeclare;
 use Bayrell.Bundler.BundlerHelper;
 
@@ -77,13 +76,6 @@ class ModuleDescription implements ModuleDescriptionInterface
 		/* Add Entity */
 		new Entity{ "name": "Bayrell.Bundler.Tasks" },
 		
-		/* Extend entities */
-		new LambdaChain
-		{
-			"name": "Runtime.Entities",
-			"value": "Bayrell.Bundler.ModuleDescription::extendEntities",
-		},
-		
 		/* Build module */
 		new LambdaChain
 		{
@@ -100,22 +92,6 @@ class ModuleDescription implements ModuleDescriptionInterface
 			"pos": 2000,
 		},
 	];
-	
-	
-	
-	/**
-	 * Extend entities
-	 */
-	pure Collection<CoreStruct> extendEntities(Context c, Collection<CoreStruct> entities)
-	{
-		/* Get plugins */
-		Collection plugins = c
-			-> method config(["Bayrell.Bundler", "plugins"], true)
-			-> monad lib::to("Runtime.Collection", null)
-		;
-		
-		return entities;
-	}
 	
 	
 	
@@ -162,6 +138,17 @@ class ModuleDescription implements ModuleDescriptionInterface
 		
 		/* Set config */
 		c <= settings <= config <= "Bayrell.Bundler" <= json;
+		
+		/* Get plugins */
+		Collection plugins = json["plugins"] |> default Collection null;
+		
+		/* Extends entities by plugin */
+		for (int i=0; i<plugins.count(); i++)
+		{
+			string plugin = plugins.item(i);
+			fn f = rtl::method(plugin, "extendEntities");
+			c <= entities <= f(c, c.entities);
+		}
 		
 		/* Start */
 		return await c::start(c);

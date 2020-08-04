@@ -1,0 +1,217 @@
+/*!
+ *  Bayrell Bundler
+ *
+ *  (c) Copyright 2020 "Ildar Bikmamatov" <support@bayrell.org>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+namespace Bayrell.Bundler.Plugins;
+
+use Runtime.fs;
+use Runtime.re;
+use Runtime.CoreStruct;
+use Runtime.Core.Context;
+use Runtime.Core.Entity;
+use Runtime.Core.LambdaChain;
+use Runtime.Task.TaskOutputProvider;
+use Bayrell.Bundler.BuildFile;
+use Bayrell.Bundler.BundlerHelper;
+use Bayrell.Bundler.BundlerPlugin;
+use Bayrell.Lang.LangBay.ParserBay;
+use Bayrell.Lang.LangES6.TranslatorES6;
+use Bayrell.Lang.LangNode.TranslatorNode;
+use Bayrell.Lang.LangPHP.TranslatorPHP;
+use Bayrell.Lang.CoreTranslator;
+use Bayrell.Lang.LangUtils;
+
+
+class BayLang extends BundlerPlugin
+{
+	
+	/**
+	 * Extend entities
+	 */
+	pure Collection<CoreStruct> extendEntities(Context c, Collection<CoreStruct> entities) =>
+		entities
+			
+			.pushIm
+			(
+				new LambdaChain
+				{
+					"name": BundlerHelper::BUILD_FILE,
+					"value": "Bayrell.Bundler.Plugins.BayLang::readFile",
+					"is_async": true,
+					"pos": BundlerHelper::BUILD_FILE_READ_FILE,
+				}
+			)
+			
+			.pushIm
+			(
+				new LambdaChain
+				{
+					"name": BundlerHelper::BUILD_FILE,
+					"value": "Bayrell.Bundler.Plugins.BayLang::parseFile",
+					"is_async": true,
+					"pos": BundlerHelper::BUILD_FILE_PARSE_FILE,
+				}
+			)
+			
+			.pushIm
+			(
+				new LambdaChain
+				{
+					"name": BundlerHelper::BUILD_FILE,
+					"value": "Bayrell.Bundler.Plugins.BayLang::saveFile",
+					"is_async": true,
+					"pos": BundlerHelper::BUILD_FILE_SAVE_FILE,
+				}
+			)
+	;
+	
+	
+	
+	/**
+	 * Read file
+	 */
+	async static BuildFile readFile(BuildFile file)
+	{
+		if (file.stop) return file;
+		if (file.ext != "bay") return file;
+		if (file.content != "") return file;
+		
+		/* Read file */
+		string content = await fs::readFile(file.file_path, "utf8", @.base_path);
+		file <= content <= content;
+		
+		return file;
+	}
+	
+	
+	
+	/**
+	 * Parse file
+	 */
+	async static BuildFile parseFile(BuildFile file)
+	{
+		if (file.stop) return file;
+		if (file.ext != "bay") return file;
+		if (file.content == "") return file;
+		
+		/* Parse file */
+		ParserBay parser = new ParserBay();
+		var ast = LangUtils::parse(parser, file.content);
+		file <= ast <= ast;
+		
+		return file;
+	}
+	
+	
+	
+	/**
+	 * Save file
+	 */
+	async static BuildFile saveFile(BuildFile file)
+	{
+		if (file.stop) return file;
+		if (file.ext != "bay") return file;
+		if (file.ast == null) return file;
+		
+		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		
+		/* Save file to other languages */
+		for (int i=0; i<file.languages.count(); i++)
+		{
+			string lang = file.languages.item(i);
+			CoreTranslator translator = static::getTranslator(lang);
+			string file_path = static::getDestFilePath(file, lang);
+			
+			/* Translate */
+			string content = LangUtils::translate(translator, file.ast);
+			
+			/* Save to file */
+			string dir_name = rs::dirname(file_path);
+			await fs::mkdir(dir_name, @.base_path);
+			await fs::saveFile(file_path, content, "utf8", @.base_path);
+			output.writeln( "=>" ~ fs::concat(@.base_path, file_path) );
+		}
+		
+		/* Output ok */
+		output.writeln( "Ok" );
+		
+		return file;
+	}
+	
+	
+	
+	/**
+	 * Get dest file path
+	 */
+	pure string getDestFilePath(BuildFile file, string lang)
+	{
+		string file_path = fs::concatArr([file.module_path, lang, file.relative_path]);
+		
+		if (lang == "php")
+		{
+			file_path = re::replace("\\.bay$", ".php", file_path);
+		}
+		else if (lang == "es6")
+		{
+			file_path = re::replace("\\.bay$", ".js", file_path);
+		}
+		else if (lang == "nodejs")
+		{
+			file_path = re::replace("\\.bay$", ".js", file_path);
+		}
+		else
+		{
+			return "";
+		}
+		
+		return file_path;
+	}
+	
+	
+	
+	/**
+	 * Get translator
+	 */
+	pure CoreTranslator getTranslator(string lang)
+	{
+		if (lang == "php")
+		{
+			return new TranslatorPHP
+			{
+			};
+		}
+		if (lang == "es6")
+		{
+			return new TranslatorES6
+			{
+				"use_module_name": false,
+				"use_strict": true,
+				"enable_async_await": true,
+			};
+		}
+		if (lang == "nodejs")
+		{
+			return new TranslatorNode
+			{
+				"enable_async_await": false,
+			};
+		}
+		return null;
+	}
+	
+	
+}
