@@ -25,6 +25,7 @@ use Runtime.Task.TaskMethod;
 use Runtime.Task.TaskOutputProvider;
 use Bayrell.Bundler.BuildModule;
 use Bayrell.Bundler.BundlerHelper;
+use Bayrell.Bundler.Inotify;
 use Bayrell.Bundler.Module;
 
 
@@ -38,6 +39,23 @@ class Tasks
 	@TaskMethod{ "alias": "watch" }
 	static async void watch()
 	{
+		Dict json = @.config("Bayrell.Bundler");
+		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		Collection<string> modules_dir = json.get("modules", []);
+		Inotify inotify = new Inotify();
+		
+		for (int i=0; i<modules_dir.count(); i++)
+		{
+			string dir = modules_dir.item(i);
+			string dir_path = fs::concat(@.base_path, dir);
+			await inotify.addFolder(dir_path);
+		}
+		
+		output.writeln("Start watch");
+		while (true)
+		{
+			await rtl::sleep(100);
+		}
 	}
 	
 	

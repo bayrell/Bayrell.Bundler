@@ -1,0 +1,192 @@
+/*!
+ *  Bayrell Bundler
+ *
+ *  (c) Copyright 2020 "Ildar Bikmamatov" <support@bayrell.org>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+namespace Bayrell.Bundler;
+
+use Runtime.fs;
+use Runtime.Map;
+use Runtime.CoreObject;
+
+
+#ifcode NODEJS then
+const fs = use("Runtime.fs");
+const Map = use("Runtime.Map");
+const { Inotify } = require('inotify');
+#endif
+
+
+class Inotify extends CoreObject
+{
+	var ctx = null;
+	var inotify = null;
+	var data = null;
+	Map descriptors = null;
+	Map watchers = null;
+	
+	
+	/** 
+	 * Constructor
+	 */
+	public void constructor()
+	{		
+		parent();
+		
+		#switch
+		#case ifcode NODEJS then
+		this.inotify = new Inotify();
+		#endswitch
+		
+		this.descriptors = new Map();
+		this.watchers = new Map();
+		this.ctx = @;
+	}
+	
+	
+	
+	/**
+	 * Callback
+	 */
+	protected async void @log(var s)
+	{
+		#switch
+		#case ifcode NODEJS then
+		/*console.log(s);*/
+		#endswitch
+	}
+	
+	
+	
+	/**
+	 * Callback
+	 */
+	protected async void @callback(var e)
+	{
+		#switch
+		#case ifcode NODEJS then
+		
+		var ctx = this.ctx;
+		var mask = e.mask;
+		var descriptor = e.watch;
+		var type = mask & Inotify.IN_ISDIR ? 'dir' : 'file';
+		var folder_path = this.descriptors.get(ctx, descriptor, "");
+		var item_path = (e.name != undefined) ? fs.concat(ctx, folder_path, e.name) : folder_path;
+		
+		if ( (mask & Inotify.IN_DELETE) && type == 'dir' && item_path != '')
+		{
+			var item_descriptor = this.watchers.get(ctx, item_path, "");
+			this.log("Remove folder [" + item_descriptor + "] " + item_path);
+			this.log(e);
+			this.log("");
+			
+			this.descriptors.remove(ctx, item_descriptor);
+			this.watchers.remove(ctx, item_path);
+		}
+		else if (mask & Inotify.IN_IGNORED)
+		{
+			var item_descriptor = this.watchers.get(ctx, item_path, "");			
+			if (item_descriptor != "")
+			{
+				this.log("Remove folder [" + item_descriptor + "] " + item_path);
+				this.descriptors.remove(ctx, item_descriptor);
+				this.watchers.remove(ctx, item_path);
+			}
+		}
+		else if (mask & Inotify.IN_MOVED_FROM)
+		{
+			this.data = e;
+			this.data.type = type;
+		}
+		else if
+		(
+			mask & Inotify.IN_MOVED_TO && type == 'dir' && 
+			Object.keys(this.data).length > 0 && this.data.cookie === e.cookie
+		)
+		{
+			var old_folder_path = this.descriptors.get(ctx, this.data.watch, "");
+			var old_item_path = (this.data.name != undefined) ?
+				fs.concat(ctx, old_folder_path, this.data.name) : old_folder_path
+			;
+			var old_item_descriptor = this.watchers.get(ctx, old_item_path, "");
+			
+			/* Move */
+			this.descriptors.remove(ctx, old_item_descriptor);
+			this.watchers.remove(ctx, old_item_path);
+			this.watchers.set(ctx, item_path, old_item_descriptor);
+			this.descriptors.set(ctx, old_item_descriptor, item_path);
+			
+			this.log("Move [" + old_item_descriptor + "] " + old_item_path + " to " + item_path);
+			this.log("");
+		}
+		else if ( (mask & Inotify.IN_CREATE) && type == 'dir' && item_path != '')
+		{
+			this.log("Add folder " + item_path);
+			this.log("");
+			await this.addFolder(ctx, item_path);
+		}
+		else
+		{
+			this.log("Event " + item_path);
+			this.log(e);
+			this.log("");
+		}
+		
+		#endswitch
+	}
+	
+	
+	
+	/** 
+	 * Add folder
+	 */
+	public async void addFolder(string path)
+	{
+		if (this.watchers.has(path)) return;
+		
+		this.@log("Watch folder " + path);
+		
+		Collection<string> items = await fs::readDir(path);
+		for (int i=0; i<items.count(); i++)
+		{
+			string item_name = items.item(i);
+			string item_path = fs::concat(path, item_name);
+			
+			bool is_dir = await fs::isDir(item_path);
+			if (is_dir)
+			{
+				await this.addFolder(item_path);
+			}
+		}
+		
+		#switch
+		#case ifcode NODEJS then
+		
+		var descriptor = this.inotify.addWatch({
+			"path": path,
+			"watch_for":
+				Inotify.IN_MODIFY | Inotify.IN_CREATE | Inotify.IN_DELETE |
+				Inotify.IN_MOVED_FROM | Inotify.IN_MOVED_TO,
+			callback: this.callback.bind(this),
+		});
+		
+		this.watchers.set(ctx, path, descriptor);
+		this.descriptors.set(ctx, descriptor, path);
+		
+		#endswitch
+	}
+	
+}
