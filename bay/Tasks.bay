@@ -61,7 +61,7 @@ class Tasks
 	static async void modules()
 	{
 		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
-		Collection<string> modules = BundlerHelper::getModules();
+		Collection<string> modules = await BundlerHelper::getModules();
 		
 		/* Output list of modules */
 		output.writeln("Modules:");
@@ -103,7 +103,7 @@ class Tasks
 	@TaskMethod{ "alias": "make_symlinks" }
 	static async void make_symlinks()
 	{
-		Collection<Module> modules = BundlerHelper::getModules();
+		Collection<Module> modules = await BundlerHelper::getModules();
 		for (int i=0; i<modules.count(); i++)
 		{
 			Module module = modules.item(i);
@@ -130,7 +130,7 @@ class Tasks
 	{
 		int sz = @.cli_args.count();
 		string module_name = @.cli_args.get(2, "");
-		Collection<Module> modules = BundlerHelper::getModules();
+		Collection<Module> modules = await BundlerHelper::getModules();
 		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
 		Module module = modules.findItem( lib::equalAttr("module_name", module_name) );
 		

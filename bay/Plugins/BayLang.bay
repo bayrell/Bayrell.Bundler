@@ -27,7 +27,7 @@ use Runtime.Core.LambdaChain;
 use Runtime.Task.TaskOutputProvider;
 use Bayrell.Bundler.BuildFile;
 use Bayrell.Bundler.BundlerHelper;
-use Bayrell.Bundler.BundlerPlugin;
+use Bayrell.Bundler.Plugin;
 use Bayrell.Lang.LangBay.ParserBay;
 use Bayrell.Lang.LangES6.TranslatorES6;
 use Bayrell.Lang.LangNode.TranslatorNode;
@@ -36,7 +36,7 @@ use Bayrell.Lang.CoreTranslator;
 use Bayrell.Lang.LangUtils;
 
 
-class BayLang extends BundlerPlugin
+class BayLang extends Plugin
 {
 	
 	/**
