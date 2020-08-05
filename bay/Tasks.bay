@@ -19,10 +19,12 @@
 namespace Bayrell.Bundler;
 
 use Runtime.fs;
+use Runtime.rs;
 use Runtime.lib;
 use Runtime.Task.TaskList;
 use Runtime.Task.TaskMethod;
 use Runtime.Task.TaskOutputProvider;
+use Bayrell.Bundler.BuildFile;
 use Bayrell.Bundler.BuildModule;
 use Bayrell.Bundler.BundlerHelper;
 use Bayrell.Bundler.Inotify;
@@ -34,6 +36,112 @@ class Tasks
 {
 	
 	/**
+	 * Load files
+	 * Chain: BundlerHelper::BUILD_MODULE
+	 */
+	async static BuildModule loadFiles(BuildModule build)
+	{
+		if (build.stop) return build;
+		if (build.module == null) return build;
+		
+		string module_path = build.module.getPath();
+		string path = fs::concat(module_path, "bay");
+		
+		Collection<string> files = await fs::readDirectoryRecursive("", fs::concat(@.base_path, path));
+		build <= module_path <= module_path;
+		build <= files <= files;
+		
+		return build;
+	}
+	
+	
+	
+	/**
+	 * Build
+	 * Chain: BundlerHelper::BUILD_MODULE
+	 */
+	async static BuildModule build(BuildModule build)
+	{
+		if (build.stop) return build;
+		if (build.files == null) return build;
+		
+		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		Dict json = @.config("Bayrell.Bundler");
+		Collection<string> languages = json.get("languages");
+		
+		string files_path = fs::concat(build.module_path, "bay");
+		for (int i=0; i<build.files.count(); i++)
+		{
+			string file_name = fs::concat(files_path, build.files.item(i));
+			BuildFile file = new BuildFile
+			{
+				"relative_path": build.files.item(i),
+				"file_path": file_name,
+				"ext": rs::extname(file_name),
+				"module": build.module,
+				"languages": languages,
+			};
+			
+			/* Build file */
+			BuildFile file = @.chain(BundlerHelper::BUILD_FILE_CHECK, [ file ]);
+			if (not file.stop)
+			{
+				output.writeln( fs::concat(@.base_path, file_name) );
+				await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);
+			}
+		}
+		
+		return build;
+	}
+	
+	
+	
+	/**
+	 * Change File
+	 */
+	static async void onChangeFile(Inotify inotify, string file_name)
+	{
+		Dict json = @.config("Bayrell.Bundler");
+		Collection<string> languages = json.get("languages");
+		
+		if (rs::strpos(file_name, @.base_path) != 0) return;
+		
+		string file_path = rs::substr( file_name, rs::strlen(@.base_path) );
+		
+		Module module = inotify.modules.findItem
+		(
+			bool (Module module) use (file_path)
+			{
+				return rs::strpos(file_path, module.getPath()) == 0;
+			}
+		);
+		
+		if (module == null) return;
+		
+		/* Write file name */
+		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		
+		/* Create build container */
+		BuildFile file = new BuildFile
+		{
+			"file_path": file_path,
+			"ext": rs::extname(file_path),
+			"module": module,
+			"languages": languages,
+		};
+		
+		/* Build file */
+		BuildFile file = @.chain(BundlerHelper::BUILD_FILE_CHECK, [ file ]);
+		if (not file.stop)
+		{
+			output.writeln( fs::concat(@.base_path, file_path) );
+			await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);
+		}
+	}
+	
+	
+	
+	/**
 	 * Watch changes
 	 */
 	@TaskMethod{ "alias": "watch" }
@@ -42,7 +150,14 @@ class Tasks
 		Dict json = @.config("Bayrell.Bundler");
 		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
 		Collection<string> modules_dir = json.get("modules", []);
+		Collection<Module> modules = await BundlerHelper::getModules();
+		
+		/* Get notify driver */
 		Inotify inotify = new Inotify();
+		await inotify.createNotify();
+		inotify.onChangeFile = method static::onChangeFile;
+		inotify.changeTimeout = 500;
+		inotify.modules = modules;
 		
 		for (int i=0; i<modules_dir.count(); i++)
 		{
@@ -126,7 +241,7 @@ class Tasks
 		{
 			Module module = modules.item(i);
 			
-			string module_path = fs::concat(module.relative_path, module.module_name);
+			string module_path = fs::concat(module.lib_path, module.module_name);
 			string assets_path = fs::concat("/web/assets/", module.module_name);
 			
 			/* Resources folder */
@@ -164,7 +279,7 @@ class Tasks
 			);
 			return;
 		}
-		else if (module == -1)
+		else if (module == null)
 		{
 			output.writeln("Wrong module name " ~ module_name);
 			return;

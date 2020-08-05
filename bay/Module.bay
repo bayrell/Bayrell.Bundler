@@ -18,11 +18,16 @@
 
 namespace Bayrell.Bundler;
 
+use Runtime.fs;
 use Runtime.CoreStruct;
 
 
 struct Module extends CoreStruct
 {
 	string module_name = "";
-	string relative_path = "";
+	string lib_path = "";
+	
+	/* Get module path */
+	string getPath() => fs::concat(this.lib_path, this.module_name);
+	
 }

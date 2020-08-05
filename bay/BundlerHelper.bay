@@ -28,6 +28,7 @@ class BundlerHelper
 	static const string BUILD_PROJECT = "Bayrell.Bundler.BundlerHelper::BUILD_PROJECT";
 	static const string BUILD_MODULE = "Bayrell.Bundler.BundlerHelper::BUILD_MODULE";
 	static const string BUILD_FILE = "Bayrell.Bundler.BundlerHelper::BUILD_FILE";
+	static const string BUILD_FILE_CHECK = "Bayrell.Bundler.BundlerHelper::BUILD_FILE_CHECK";
 	
 	/* Chain pos */
 	static const int BUILD_FILE_FILTER = 1000;
@@ -69,7 +70,7 @@ class BundlerHelper
 					new Module
 					{
 						"module_name": module_name,
-						"relative_path": dir,
+						"lib_path": dir,
 					}
 				);
 			}

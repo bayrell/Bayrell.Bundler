@@ -19,17 +19,50 @@
 namespace Bayrell.Bundler;
 
 use Runtime.fs;
+use Runtime.rs;
 use Runtime.CoreStruct;
+use Runtime.Exceptions.RuntimeException;
+use Bayrell.Bundler.Module;
 
 
 struct BuildFile extends CoreStruct
 {
-	string relative_path = "";
-	string ext = "";
 	string file_path = "";
-	string module_path = "";
-	string content = "";
+	string ext = "";
+	Module module = null;
 	Collection<string> languages = null;
+	string content = "";
 	var ast = null;
 	bool stop = false;
+	RuntimeException parse_error = null;
+	
+	
+	/**
+	 * Returns relative module path
+	 */
+	string getBayPath()
+	{
+		if (this.module == null) return "";
+	
+		string module_path = this.module.getPath();
+		Collection<string> module_path_arr = rs::explode("/", module_path);
+		Collection<string> file_path_arr = rs::explode("/", this.file_path);
+		
+		int i = 0;
+		while
+		(
+			i < module_path_arr.count() and i < file_path_arr.count() and
+			module_path_arr[i] == file_path_arr[i]
+		)
+			i++
+		;
+		
+		if (i < file_path_arr.count() and file_path_arr[i] == "bay")
+		{
+			return "/" ~ rs::join("/", file_path_arr.slice(i + 1));
+		}
+		
+		return "";
+	}
+	
 }

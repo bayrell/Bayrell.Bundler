@@ -28,6 +28,7 @@ use Runtime.Task.TaskOutputProvider;
 use Bayrell.Bundler.BuildFile;
 use Bayrell.Bundler.BundlerHelper;
 use Bayrell.Bundler.Plugin;
+use Bayrell.Lang.Exceptions.ParserError;
 use Bayrell.Lang.LangBay.ParserBay;
 use Bayrell.Lang.LangES6.TranslatorES6;
 use Bayrell.Lang.LangNode.TranslatorNode;
@@ -44,6 +45,16 @@ class BayLang extends Plugin
 	 */
 	pure Collection<CoreStruct> extendEntities(Context c, Collection<CoreStruct> entities) =>
 		entities
+			
+			.pushIm
+			(
+				new LambdaChain
+				{
+					"name": BundlerHelper::BUILD_FILE_CHECK,
+					"value": "Bayrell.Bundler.Plugins.BayLang::check",
+					"pos": 0,
+				}
+			)
 			
 			.pushIm
 			(
@@ -82,11 +93,27 @@ class BayLang extends Plugin
 	
 	
 	/**
+	 * Check file
+	 */
+	static BuildFile check(BuildFile file)
+	{
+		if (file.stop) return file.copy{ "stop": true };
+		if (file.getBayPath() == "") return file.copy{ "stop": true };
+		if (file.module == null) return file.copy{ "stop": true };
+		if (file.ext != "bay") return file.copy{ "stop": true };
+		return file;
+	}
+	
+	
+	
+	/**
 	 * Read file
 	 */
 	async static BuildFile readFile(BuildFile file)
 	{
 		if (file.stop) return file;
+		if (file.getBayPath() == "") return file;
+		if (file.module == null) return file;
 		if (file.ext != "bay") return file;
 		if (file.content != "") return file;
 		
@@ -105,13 +132,24 @@ class BayLang extends Plugin
 	async static BuildFile parseFile(BuildFile file)
 	{
 		if (file.stop) return file;
+		if (file.module == null) return file;
 		if (file.ext != "bay") return file;
 		if (file.content == "") return file;
 		
+		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		
 		/* Parse file */
 		ParserBay parser = new ParserBay();
-		var ast = LangUtils::parse(parser, file.content);
-		file <= ast <= ast;
+		try
+		{
+			var ast = LangUtils::parse(parser, file.content);
+			file <= ast <= ast;
+		}
+		catch (ParserError e)
+		{
+			file <= parse_error <= e;
+			output.writeln( "Error: " ~ e.getErrorMessage() );
+		}
 		
 		return file;
 	}
@@ -124,6 +162,7 @@ class BayLang extends Plugin
 	async static BuildFile saveFile(BuildFile file)
 	{
 		if (file.stop) return file;
+		if (file.module == null) return file;
 		if (file.ext != "bay") return file;
 		if (file.ast == null) return file;
 		
@@ -159,7 +198,7 @@ class BayLang extends Plugin
 	 */
 	pure string getDestFilePath(BuildFile file, string lang)
 	{
-		string file_path = fs::concatArr([file.module_path, lang, file.relative_path]);
+		string file_path = fs::concatArr([file.module.getPath(), lang, file.getBayPath()]);
 		
 		if (lang == "php")
 		{

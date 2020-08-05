@@ -23,6 +23,7 @@ use Runtime.fs;
 use Runtime.CoreStruct;
 use Runtime.Interfaces.ModuleDescriptionInterface;
 use Runtime.Core.Context;
+use Runtime.Core.Driver;
 use Runtime.Core.Entity;
 use Runtime.Core.LambdaChain;
 use Runtime.Core.LambdaChainDeclare;
@@ -80,14 +81,14 @@ class ModuleDescription implements ModuleDescriptionInterface
 		new LambdaChain
 		{
 			"name": BundlerHelper::BUILD_MODULE,
-			"value": "Bayrell.Bundler.BuildModule::loadFiles",
+			"value": "Bayrell.Bundler.Tasks::loadFiles",
 			"is_async": true,
 			"pos": 1000,
 		},
 		new LambdaChain
 		{
 			"name": BundlerHelper::BUILD_MODULE,
-			"value": "Bayrell.Bundler.BuildModule::build",
+			"value": "Bayrell.Bundler.Tasks::build",
 			"is_async": true,
 			"pos": 2000,
 		},

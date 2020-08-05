@@ -21,6 +21,8 @@ namespace Bayrell.Bundler;
 use Runtime.fs;
 use Runtime.Map;
 use Runtime.CoreObject;
+use Runtime.Core.CoreDriver;
+use Bayrell.Bundler.Module;
 
 
 #ifcode NODEJS then
@@ -35,8 +37,12 @@ class Inotify extends CoreObject
 	var ctx = null;
 	var inotify = null;
 	var data = null;
+	Collection<Module> modules = null;
 	Map descriptors = null;
 	Map watchers = null;
+	var onChangeFileTimeouts = null;
+	var onChangeFile = null;
+	int changeTimeout = 500;
 	
 	
 	/** 
@@ -45,14 +51,25 @@ class Inotify extends CoreObject
 	public void constructor()
 	{		
 		parent();
+		this.descriptors = new Map();
+		this.watchers = new Map();
+		this.onChangeFileTimeouts = new Map();
+	}
+	
+	
+	
+	/**
+	 * Create notify
+	 */
+	public async void createNotify()
+	{
+		if (this.inotify != null) return;
 		
 		#switch
 		#case ifcode NODEJS then
 		this.inotify = new Inotify();
 		#endswitch
 		
-		this.descriptors = new Map();
-		this.watchers = new Map();
 		this.ctx = @;
 	}
 	
@@ -74,7 +91,7 @@ class Inotify extends CoreObject
 	/**
 	 * Callback
 	 */
-	protected async void @callback(var e)
+	protected async void @onNotify(var e)
 	{
 		#switch
 		#case ifcode NODEJS then
@@ -138,6 +155,24 @@ class Inotify extends CoreObject
 			this.log("");
 			await this.addFolder(ctx, item_path);
 		}
+		else if ( (mask & Inotify.IN_MODIFY) && type == 'file')
+		{
+			if (this.onChangeFile != null)
+			{
+				var timer;
+				
+				timer = this.onChangeFileTimeouts.get(ctx, item_path, null);
+				if (timer != null) clearTimeout(timer);
+				this.onChangeFileTimeouts.remove(ctx, item_path);
+				
+				timer = setTimeout
+				(
+					async () => { await this.onChangeFile(ctx, this, item_path); },
+					this.changeTimeout
+				);
+				this.onChangeFileTimeouts.set(ctx, item_path, timer);
+			}
+		}
 		else
 		{
 			this.log("Event " + item_path);
@@ -180,7 +215,7 @@ class Inotify extends CoreObject
 			"watch_for":
 				Inotify.IN_MODIFY | Inotify.IN_CREATE | Inotify.IN_DELETE |
 				Inotify.IN_MOVED_FROM | Inotify.IN_MOVED_TO,
-			callback: this.callback.bind(this),
+			callback: this.onNotify.bind(this),
 		});
 		
 		this.watchers.set(ctx, path, descriptor);
