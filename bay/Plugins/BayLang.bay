@@ -148,7 +148,7 @@ class BayLang extends Plugin
 		catch (ParserError e)
 		{
 			file <= parse_error <= e;
-			output.writeln( "Error: " ~ e.getErrorMessage() );
+			output.writeln( "Parser error: " ~ e.getErrorMessage() );
 		}
 		
 		return file;
@@ -182,11 +182,14 @@ class BayLang extends Plugin
 			string dir_name = rs::dirname(file_path);
 			await fs::mkdir(dir_name, @.base_path);
 			await fs::saveFile(file_path, content, "utf8", @.base_path);
-			output.writeln( "=>" ~ fs::concat(@.base_path, file_path) );
+			if (file.log_files)
+			{
+				output.writeln( "=>" ~ fs::concat(@.base_path, file_path) );
+			}
 		}
 		
 		/* Output ok */
-		output.writeln( "Ok" );
+		if (file.log_files) output.writeln( "Ok" );
 		
 		return file;
 	}
@@ -240,13 +243,17 @@ class BayLang extends Plugin
 				"use_module_name": false,
 				"use_strict": true,
 				"enable_async_await": true,
+				"emulate_async_await": true,
 			};
 		}
 		if (lang == "nodejs")
 		{
 			return new TranslatorNode
 			{
-				"enable_async_await": false,
+				"use_module_name": true,
+				"use_strict": true,
+				"enable_async_await": true,
+				"emulate_async_await": false,
 			};
 		}
 		return null;

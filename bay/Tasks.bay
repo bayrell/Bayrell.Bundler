@@ -47,9 +47,13 @@ class Tasks
 		string module_path = build.module.getPath();
 		string path = fs::concat(module_path, "bay");
 		
-		Collection<string> files = await fs::readDirectoryRecursive("", fs::concat(@.base_path, path));
-		build <= module_path <= module_path;
-		build <= files <= files;
+		bool exists = await fs::exists(path, @.base_path);
+		if (exists)
+		{
+			Collection<string> files = await fs::readDirectoryRecursive(path, @.base_path);
+			build <= module_path <= module_path;
+			build <= files <= files;
+		}
 		
 		return build;
 	}
@@ -80,6 +84,7 @@ class Tasks
 				"ext": rs::extname(file_name),
 				"module": build.module,
 				"languages": languages,
+				"log_files": build.log_files,
 			};
 			
 			/* Build file */
@@ -87,7 +92,13 @@ class Tasks
 			if (not file.stop)
 			{
 				output.writeln( fs::concat(@.base_path, file_name) );
-				await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);
+				file = await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);
+				
+				/* Stop if error */
+				if (file.parse_error != null)
+				{
+					/*return build;*/
+				}
 			}
 		}
 		
@@ -307,6 +318,24 @@ class Tasks
 	@TaskMethod{ "alias": "make_all" }
 	static async void make_all()
 	{
+		Collection<Module> modules = await BundlerHelper::getModules();
+		for (int i=0; i<modules.count(); i++)
+		{
+			Module module = modules.item(i);
+			
+			/* Chain module build */
+			await @.chainAwait
+			(
+				BundlerHelper::BUILD_MODULE,
+				[
+					new BuildModule
+					{
+						"module": module,
+						"log_files": false,
+					}
+				]
+			);
+		}
 	}
 	
 }

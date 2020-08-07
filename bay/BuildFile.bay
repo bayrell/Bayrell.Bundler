@@ -35,6 +35,7 @@ struct BuildFile extends CoreStruct
 	var ast = null;
 	bool stop = false;
 	RuntimeException parse_error = null;
+	bool log_files = true;
 	
 	
 	/**

@@ -33,4 +33,5 @@ struct BuildModule extends CoreStruct
 	string module_path = "";
 	Collection<string> files = null;
 	bool stop = false;
+	bool log_files = true;
 }
