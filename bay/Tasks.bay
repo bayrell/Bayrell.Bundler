@@ -303,7 +303,8 @@ class Tasks
 			[
 				new BuildModule
 				{
-					"module": module
+					"module": module,
+					"log_files": false,
 				}
 			]
 		);
