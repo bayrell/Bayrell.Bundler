@@ -21,6 +21,7 @@ namespace Bayrell.Bundler;
 use Runtime.fs;
 use Runtime.Map;
 use Runtime.BaseObject;
+use Runtime.Core.CoreObject;
 use Runtime.Core.CoreDriver;
 use Bayrell.Bundler.Module;
 
@@ -32,7 +33,7 @@ const { Inotify } = require('inotify');
 #endif
 
 
-class Inotify extends BaseObject
+class Inotify extends CoreObject
 {
 	var ctx = null;
 	var inotify = null;
@@ -48,9 +49,9 @@ class Inotify extends BaseObject
 	/** 
 	 * Constructor
 	 */
-	public void constructor()
+	public void constructor(string object_name = "")
 	{		
-		parent();
+		parent(object_name);
 		this.descriptors = new Map();
 		this.watchers = new Map();
 		this.onChangeFileTimeouts = new Map();

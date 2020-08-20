@@ -118,14 +118,7 @@ class Tasks
 		if (rs::strpos(file_name, @.base_path) != 0) return;
 		
 		string file_path = rs::substr( file_name, rs::strlen(@.base_path) );
-		
-		Module module = inotify.modules.findItem
-		(
-			bool (Module module) use (file_path)
-			{
-				return rs::strpos(file_path, module.getPath()) == 0;
-			}
-		);
+		Module module = BundlerHelper::findModule(inotify.modules, file_path);
 		
 		if (module == null) return;
 		
@@ -164,12 +157,12 @@ class Tasks
 		Collection<Module> modules = await BundlerHelper::getModules();
 		
 		/* Get notify driver */
-		Inotify inotify = new Inotify();
+		Inotify inotify = new Inotify("bundler-inotify");
 		await inotify.createNotify();
 		inotify.onChangeFile = method static::onChangeFile;
 		inotify.changeTimeout = 500;
 		inotify.modules = modules;
-		/* @.addObject(inotify); */
+		@.addObject(inotify);
 		
 		for (int i=0; i<modules_dir.count(); i++)
 		{

@@ -80,4 +80,28 @@ class BundlerHelper
 	}
 	
 	
+	
+	/**
+	 * Find module by file_path
+	 */
+	pure Module findModule(Collection<Module> modules, string file_path)
+	{
+		int str_len = 0;
+		Module find = null;
+		for (int i=0; i<modules.count(); i++)
+		{
+			Module module = modules.item(i);
+			string module_path = module.getPath() ~ "/";
+			int module_path_len = rs::strlen(module_path);
+			
+			if (rs::strpos(file_path, module_path) == 0 and module_path_len > str_len)
+			{
+				find = module;
+				str_len = module_path_len;
+			}
+		}
+		
+		return find;
+	}
+	
 }
