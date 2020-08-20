@@ -20,7 +20,7 @@ namespace Bayrell.Bundler;
 
 use Runtime.lib;
 use Runtime.fs;
-use Runtime.CoreStruct;
+use Runtime.BaseStruct;
 use Runtime.Interfaces.ModuleDescriptionInterface;
 use Runtime.Core.Context;
 use Runtime.Core.Driver;

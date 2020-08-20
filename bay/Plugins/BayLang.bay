@@ -20,11 +20,11 @@ namespace Bayrell.Bundler.Plugins;
 
 use Runtime.fs;
 use Runtime.re;
-use Runtime.CoreStruct;
+use Runtime.BaseStruct;
 use Runtime.Core.Context;
 use Runtime.Core.Entity;
 use Runtime.Core.LambdaChain;
-use Runtime.Task.TaskOutputProvider;
+use Runtime.Task.TaskDriver;
 use Bayrell.Bundler.BuildFile;
 use Bayrell.Bundler.BundlerHelper;
 use Bayrell.Bundler.Plugin;
@@ -43,7 +43,7 @@ class BayLang extends Plugin
 	/**
 	 * Extend entities
 	 */
-	pure Collection<CoreStruct> extendEntities(Context c, Collection<CoreStruct> entities) =>
+	pure Collection<BaseStruct> extendEntities(Context c, Collection<BaseStruct> entities) =>
 		entities
 			
 			.pushIm
@@ -136,7 +136,7 @@ class BayLang extends Plugin
 		if (file.ext != "bay") return file;
 		if (file.content == "") return file;
 		
-		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		TaskDriver output = @.getDriver(classof TaskDriver);
 		
 		/* Parse file */
 		ParserBay parser = new ParserBay();
@@ -166,7 +166,7 @@ class BayLang extends Plugin
 		if (file.ext != "bay") return file;
 		if (file.ast == null) return file;
 		
-		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		TaskDriver output = @.getDriver(classof TaskDriver);
 		
 		/* Save file to other languages */
 		for (int i=0; i<file.languages.count(); i++)

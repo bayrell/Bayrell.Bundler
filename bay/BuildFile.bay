@@ -20,12 +20,12 @@ namespace Bayrell.Bundler;
 
 use Runtime.fs;
 use Runtime.rs;
-use Runtime.CoreStruct;
+use Runtime.BaseStruct;
 use Runtime.Exceptions.RuntimeException;
 use Bayrell.Bundler.Module;
 
 
-struct BuildFile extends CoreStruct
+struct BuildFile extends BaseStruct
 {
 	string file_path = "";
 	string ext = "";

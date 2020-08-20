@@ -19,10 +19,10 @@
 namespace Bayrell.Bundler;
 
 use Runtime.fs;
-use Runtime.CoreStruct;
+use Runtime.BaseStruct;
 
 
-struct Module extends CoreStruct
+struct Module extends BaseStruct
 {
 	string module_name = "";
 	string lib_path = "";

@@ -18,7 +18,7 @@
 
 namespace Bayrell.Bundler;
 
-use Runtime.CoreStruct;
+use Runtime.BaseStruct;
 use Runtime.Core.Context;
 
 
@@ -28,6 +28,6 @@ class Plugin
 	/**
 	 * Extend entities
 	 */
-	pure Collection<CoreStruct> extendEntities(Context c, Collection<CoreStruct> entities) => entities;
+	pure Collection<BaseStruct> extendEntities(Context c, Collection<BaseStruct> entities) => entities;
 	
 }

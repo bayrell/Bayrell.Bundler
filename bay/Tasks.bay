@@ -23,7 +23,7 @@ use Runtime.rs;
 use Runtime.lib;
 use Runtime.Task.TaskList;
 use Runtime.Task.TaskMethod;
-use Runtime.Task.TaskOutputProvider;
+use Runtime.Task.TaskDriver;
 use Bayrell.Bundler.BuildFile;
 use Bayrell.Bundler.BuildModule;
 use Bayrell.Bundler.BundlerHelper;
@@ -69,7 +69,7 @@ class Tasks
 		if (build.stop) return build;
 		if (build.files == null) return build;
 		
-		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		TaskDriver output = @.getDriver(classof TaskDriver);
 		Dict json = @.config("Bayrell.Bundler");
 		Collection<string> languages = json.get("languages");
 		
@@ -130,7 +130,7 @@ class Tasks
 		if (module == null) return;
 		
 		/* Write file name */
-		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		TaskDriver output = @.getDriver(classof TaskDriver);
 		
 		/* Create build container */
 		BuildFile file = new BuildFile
@@ -159,7 +159,7 @@ class Tasks
 	static async void watch()
 	{
 		Dict json = @.config("Bayrell.Bundler");
-		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		TaskDriver output = @.getDriver(classof TaskDriver);
 		Collection<string> modules_dir = json.get("modules", []);
 		Collection<Module> modules = await BundlerHelper::getModules();
 		
@@ -169,6 +169,7 @@ class Tasks
 		inotify.onChangeFile = method static::onChangeFile;
 		inotify.changeTimeout = 500;
 		inotify.modules = modules;
+		/* @.addObject(inotify); */
 		
 		for (int i=0; i<modules_dir.count(); i++)
 		{
@@ -204,7 +205,7 @@ class Tasks
 	@TaskMethod{ "alias": "modules" }
 	static async void modules()
 	{
-		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		TaskDriver output = @.getDriver(classof TaskDriver);
 		Collection<string> modules = await BundlerHelper::getModules();
 		
 		/* Output list of modules */
@@ -225,7 +226,7 @@ class Tasks
 	 */
 	static async void make_link(string module_path, string assets_path, string kind)
 	{
-		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		TaskDriver output = @.getDriver(classof TaskDriver);
 		string src = fs::concat(module_path, kind);
 		string dest = fs::concat(assets_path, kind);
 		string rel = fs::relative(assets_path, src);
@@ -275,7 +276,7 @@ class Tasks
 		int sz = @.cli_args.count();
 		string module_name = @.cli_args.get(2, "");
 		Collection<Module> modules = await BundlerHelper::getModules();
-		TaskOutputProvider output = @.getProvider(classof TaskOutputProvider);
+		TaskDriver output = @.getDriver(classof TaskDriver);
 		Module module = modules.findItem( lib::equalAttr("module_name", module_name) );
 		
 		if (module_name == "")
