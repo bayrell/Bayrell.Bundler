@@ -35,7 +35,6 @@ struct ChainFile extends BaseStruct
 	var ast = null;
 	bool stop = false;
 	RuntimeException parse_error = null;
-	bool log_files = true;
 	
 	
 	/**
@@ -75,9 +74,9 @@ struct ChainFile extends BaseStruct
 	 */
 	static ChainFile checkFile(BundlerController control, ChainFile file)
 	{
-		if (file.stop) return file.copy{ "stop": true };
-		if (file.getBayPath() == "") return file.copy{ "stop": true };
-		if (file.module == null) return file.copy{ "stop": true };
+		if (file.stop) return [ control, file.copy{ "stop": true } ];
+		if (file.getBayPath() == "") return [ control, file.copy{ "stop": true } ];
+		if (file.module == null) return [ control, file.copy{ "stop": true } ];
 		return [ control, file ];
 	}
 	

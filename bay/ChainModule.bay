@@ -29,14 +29,9 @@ use Bayrell.Bundler.Module;
 
 struct ChainModule extends BaseStruct
 {
-	Dict config = null;
-	Collection<string> languages = null;
 	Module module = null;
-	string module_path = "";
 	Collection<string> files = null;
 	bool stop = false;
-	bool log_files = true;
-	
 	
 	
 	/**
@@ -55,7 +50,6 @@ struct ChainModule extends BaseStruct
 		if (exists)
 		{
 			Collection<string> files = await fs::readDirectoryRecursive(path, @.base_path);
-			chain <= module_path <= module_path;
 			chain <= files <= files;
 		}
 		
@@ -73,7 +67,8 @@ struct ChainModule extends BaseStruct
 		if (chain.stop) return chain;
 		if (chain.files == null) return chain;
 		
-		string files_path = fs::concat(chain.module_path, "bay");
+		string module_path = chain.module.getPath();
+		string files_path = fs::concat(module_path, "bay");
 		for (int i=0; i<chain.files.count(); i++)
 		{
 			string file_relative_path = chain.files.item(i);

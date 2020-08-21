@@ -125,7 +125,7 @@ class BundlerController extends CoreObject
 	/**
 	 * Run module build chain
 	 */
-	async void chainBuildModule(string module_name)
+	async void chainBuildModuleByName(string module_name)
 	{
 		Module module = this.findModuleByName(module_name);
 		if (module == null)
@@ -134,7 +134,17 @@ class BundlerController extends CoreObject
 		}
 		
 		/* Chain module build */
-		await @.chainAwait(static::CHAIN_BUILD_MODULE, [this, module]);
+		await @.chainAwait
+		(
+			static::CHAIN_BUILD_MODULE,
+			[
+				this,
+				new ChainModule
+				{
+					"module": module,
+				}
+			]
+		);
 	}
 	
 	
@@ -142,7 +152,7 @@ class BundlerController extends CoreObject
 	/**
 	 * Run file build chain
 	 */
-	async ChainFile chainBuildCheckFile(ChainFile file)
+	ChainFile chainBuildCheckFile(ChainFile file)
 	{
 		return @.chain(static::CHAIN_BUILD_FILE_CHECK, [ this, file ]) |> attr 1;
 	}
@@ -170,13 +180,13 @@ class BundlerController extends CoreObject
 			return;
 		}
 		
-		Dict build_conf = static::getBuildConf(this.conf, module);
+		Dict build_conf = static::getBuildConf(this.config, module);
 		if (build_conf == null)
 		{
 			return;
 		}
 		
-		this.chainBundle(build_conf);
+		await this.chainBundle(build_conf);
 	}
 	
 	

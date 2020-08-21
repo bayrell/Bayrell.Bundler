@@ -38,7 +38,6 @@ class Inotify extends CoreObject
 	var ctx = null;
 	var inotify = null;
 	var data = null;
-	Collection<Module> modules = null;
 	Map descriptors = null;
 	Map watchers = null;
 	var onChangeFileTimeouts = null;

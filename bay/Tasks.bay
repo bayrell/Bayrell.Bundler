@@ -65,7 +65,7 @@ class Tasks
 			await control.chainBuildFile(file);
 			
 			/* Bundle */
-			control.bundleByModule(module.module_name);
+			await control.bundleByModule(module.module_name);
 		}
 	}
 	
@@ -78,13 +78,13 @@ class Tasks
 	static async void task_watch()
 	{
 		BundlerController control = await BundlerController::getController();
+		control.log_files = true;
 		
 		/* Get notify driver */
 		Inotify inotify = new Inotify("bundler-inotify");
 		await inotify.createNotify();
 		inotify.onChangeFile = method static::onChangeFile;
 		inotify.changeTimeout = 500;
-		inotify.modules = control.modules;
 		@.addObject(inotify);
 		
 		Collection<string> modules_dir = control.config |> "modules" |> default Collection [];
@@ -116,7 +116,7 @@ class Tasks
 		Collection<Dict> build_items = control.config |> "build" |> default [];
 		for (int i=0; i<build_items.count(); i++)
 		{
-			Vector<string> builded_modules = new Vector();
+			Map<bool> builded_modules = new Map();
 			Dict bundle_conf = build_items.item(i);
 			
 			/* Get params */
@@ -128,12 +128,12 @@ class Tasks
 				string module_name = build_modules.item(j);
 				if (builded_modules.has(module_name)) continue;
 				
-				this.chainBuildModule(module_name);
+				await control.chainBuildModuleByName(module_name);
 				builded_modules.set(module_name, true);
 			}
 			
 			/* Make bundle */
-			this.chainBundle(bundle_conf);
+			await control.chainBundle(bundle_conf);
 		}
 		
 	}
@@ -166,7 +166,8 @@ class Tasks
 	 */
 	static async void make_link(string module_path, string assets_path, string kind)
 	{
-		TaskDriver output = @.getDriver(classof TaskDriver);
+		module_path = fs::addFirstSlash(module_path);
+		assets_path = fs::addFirstSlash(assets_path);
 		string src = fs::concat(module_path, kind);
 		string dest = fs::concat(assets_path, kind);
 		string rel = fs::relative(assets_path, src);
@@ -176,6 +177,8 @@ class Tasks
 		{
 			await fs::unlink(dest, @.base_path);
 			await fs::symlink(rel, dest, @.base_path);
+			
+			TaskDriver output = @.getDriver(classof TaskDriver);
 			output.writeln(fs::concat(@.base_path, dest) ~ " -> " ~ rel);
 		}
 	}
@@ -216,7 +219,7 @@ class Tasks
 		int sz = @.cli_args.count();
 		string module_name = @.cli_args.get(2, "");
 		BundlerController control = await BundlerController::getController();
-		Module module = control.findModule(module_name);
+		Module module = control.findModuleByName(module_name);
 		
 		if (module_name == "")
 		{
@@ -236,9 +239,8 @@ class Tasks
 			return;
 		}
 		
-		
 		/* Run module build chain */
-		control.buildModule(module_name);
+		await control.chainBuildModuleByName(module_name);
 	}
 	
 	
@@ -253,7 +255,7 @@ class Tasks
 		for (int i=0; i<control.modules.count(); i++)
 		{
 			Module module = control.modules.item(i);
-			control.buildModule(module.module_name);
+			await control.chainBuildModuleByName(module.module_name);
 		}
 	}
 	

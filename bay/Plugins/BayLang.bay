@@ -89,7 +89,6 @@ static class BayLang extends Plugin
 	{
 		if (file.stop) return false;
 		if (file.getBayPath() == "") return false;
-		if (file.config == null) return false;
 		if (file.module == null) return false;
 		if (file.ext != "bay" and file.ext != "ui") return false;
 		return true;
@@ -148,13 +147,17 @@ static class BayLang extends Plugin
 		if (not static::check(file)) return [control, file];
 		if (file.ast == null) return [control, file];
 		
-		/* Collection<string> languages = file.config.get("languages"); */
-		
 		/* Save file to other languages */
-		for (int i=0; i<file.languages.count(); i++)
+		for (int i=0; i<control.languages.count(); i++)
 		{
-			string lang = file.languages.item(i);
-			CoreTranslator translator = static::getTranslator(file, lang);
+			string lang = control.languages.item(i);
+			CoreTranslator translator = static::getTranslator(control, file, lang);
+			if (translator == null)
+			{
+				continue;
+			}
+			
+			/* Get destination path */
 			string file_path = static::getDestFilePath(control, file, lang);
 			
 			/* Translate */
@@ -164,14 +167,14 @@ static class BayLang extends Plugin
 			string dir_name = rs::dirname(file_path);
 			await fs::mkdir(dir_name, @.base_path);
 			await fs::saveFile(file_path, content, "utf8", @.base_path);
-			if (file.log_files)
+			if (control.log_files)
 			{
 				control.writeln( "=>" ~ fs::concat(@.base_path, file_path) );
 			}
 		}
 		
 		/* Output ok */
-		if (file.log_files) control.writeln( "Ok" );
+		if (control.log_files) control.writeln( "Ok" );
 		
 		return [control, file]
 	}
