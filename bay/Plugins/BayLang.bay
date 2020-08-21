@@ -25,8 +25,8 @@ use Runtime.Core.Context;
 use Runtime.Core.Entity;
 use Runtime.Core.LambdaChain;
 use Runtime.Task.TaskDriver;
-use Bayrell.Bundler.BuildFile;
-use Bayrell.Bundler.BundlerHelper;
+use Bayrell.Bundler.BundlerController;
+use Bayrell.Bundler.ChainFile;
 use Bayrell.Bundler.Plugin;
 use Bayrell.Lang.Exceptions.ParserError;
 use Bayrell.Lang.LangBay.ParserBay;
@@ -37,7 +37,7 @@ use Bayrell.Lang.CoreTranslator;
 use Bayrell.Lang.LangUtils;
 
 
-class BayLang extends Plugin
+static class BayLang extends Plugin
 {
 	
 	/**
@@ -50,20 +50,10 @@ class BayLang extends Plugin
 			(
 				new LambdaChain
 				{
-					"name": BundlerHelper::BUILD_FILE_CHECK,
-					"value": "Bayrell.Bundler.Plugins.BayLang::check",
-					"pos": 0,
-				}
-			)
-			
-			.pushIm
-			(
-				new LambdaChain
-				{
-					"name": BundlerHelper::BUILD_FILE,
+					"name": BundlerController::CHAIN_BUILD_FILE,
 					"value": "Bayrell.Bundler.Plugins.BayLang::readFile",
 					"is_async": true,
-					"pos": BundlerHelper::BUILD_FILE_READ_FILE,
+					"pos": BundlerController::BUILD_FILE_READ_FILE,
 				}
 			)
 			
@@ -71,10 +61,10 @@ class BayLang extends Plugin
 			(
 				new LambdaChain
 				{
-					"name": BundlerHelper::BUILD_FILE,
+					"name": BundlerController::CHAIN_BUILD_FILE,
 					"value": "Bayrell.Bundler.Plugins.BayLang::parseFile",
 					"is_async": true,
-					"pos": BundlerHelper::BUILD_FILE_PARSE_FILE,
+					"pos": BundlerController::BUILD_FILE_PARSE_FILE,
 				}
 			)
 			
@@ -82,10 +72,10 @@ class BayLang extends Plugin
 			(
 				new LambdaChain
 				{
-					"name": BundlerHelper::BUILD_FILE,
+					"name": BundlerController::CHAIN_BUILD_FILE,
 					"value": "Bayrell.Bundler.Plugins.BayLang::saveFile",
 					"is_async": true,
-					"pos": BundlerHelper::BUILD_FILE_SAVE_FILE,
+					"pos": BundlerController::BUILD_FILE_SAVE_FILE,
 				}
 			)
 	;
@@ -95,13 +85,14 @@ class BayLang extends Plugin
 	/**
 	 * Check file
 	 */
-	static BuildFile check(BuildFile file)
+	static bool check(ChainFile file)
 	{
-		if (file.stop) return file.copy{ "stop": true };
-		if (file.getBayPath() == "") return file.copy{ "stop": true };
-		if (file.module == null) return file.copy{ "stop": true };
-		if (file.ext != "bay") return file.copy{ "stop": true };
-		return file;
+		if (file.stop) return false;
+		if (file.getBayPath() == "") return false;
+		if (file.config == null) return false;
+		if (file.module == null) return false;
+		if (file.ext != "bay" and file.ext != "ui") return false;
+		return true;
 	}
 	
 	
@@ -109,19 +100,16 @@ class BayLang extends Plugin
 	/**
 	 * Read file
 	 */
-	async static BuildFile readFile(BuildFile file)
+	async static ChainFile readFile(BundlerController control, ChainFile file)
 	{
-		if (file.stop) return file;
-		if (file.getBayPath() == "") return file;
-		if (file.module == null) return file;
-		if (file.ext != "bay") return file;
-		if (file.content != "") return file;
+		if (not static::check(file)) return [control, file];
+		if (file.content != "") return [control, file];
 		
 		/* Read file */
 		string content = await fs::readFile(file.file_path, "utf8", @.base_path);
 		file <= content <= content;
 		
-		return file;
+		return [control, file]
 	}
 	
 	
@@ -129,14 +117,10 @@ class BayLang extends Plugin
 	/**
 	 * Parse file
 	 */
-	async static BuildFile parseFile(BuildFile file)
+	async static ChainFile parseFile(BundlerController control, ChainFile file)
 	{
-		if (file.stop) return file;
-		if (file.module == null) return file;
-		if (file.ext != "bay") return file;
-		if (file.content == "") return file;
-		
-		TaskDriver output = @.getDriver(classof TaskDriver);
+		if (not static::check(file)) return [control, file];
+		if (file.content == "") return [control, file];
 		
 		/* Parse file */
 		ParserBay parser = new ParserBay();
@@ -148,10 +132,10 @@ class BayLang extends Plugin
 		catch (ParserError e)
 		{
 			file <= parse_error <= e;
-			output.writeln( "Parser error: " ~ e.getErrorMessage() );
+			control.writeln( "Parser error: " ~ e.getErrorMessage() );
 		}
 		
-		return file;
+		return [control, file]
 	}
 	
 	
@@ -159,21 +143,19 @@ class BayLang extends Plugin
 	/**
 	 * Save file
 	 */
-	async static BuildFile saveFile(BuildFile file)
+	async static ChainFile saveFile(BundlerController control, ChainFile file)
 	{
-		if (file.stop) return file;
-		if (file.module == null) return file;
-		if (file.ext != "bay") return file;
-		if (file.ast == null) return file;
+		if (not static::check(file)) return [control, file];
+		if (file.ast == null) return [control, file];
 		
-		TaskDriver output = @.getDriver(classof TaskDriver);
+		/* Collection<string> languages = file.config.get("languages"); */
 		
 		/* Save file to other languages */
 		for (int i=0; i<file.languages.count(); i++)
 		{
 			string lang = file.languages.item(i);
-			CoreTranslator translator = static::getTranslator(lang);
-			string file_path = static::getDestFilePath(file, lang);
+			CoreTranslator translator = static::getTranslator(file, lang);
+			string file_path = static::getDestFilePath(control, file, lang);
 			
 			/* Translate */
 			string content = LangUtils::translate(translator, file.ast);
@@ -184,14 +166,14 @@ class BayLang extends Plugin
 			await fs::saveFile(file_path, content, "utf8", @.base_path);
 			if (file.log_files)
 			{
-				output.writeln( "=>" ~ fs::concat(@.base_path, file_path) );
+				control.writeln( "=>" ~ fs::concat(@.base_path, file_path) );
 			}
 		}
 		
 		/* Output ok */
-		if (file.log_files) output.writeln( "Ok" );
+		if (file.log_files) control.writeln( "Ok" );
 		
-		return file;
+		return [control, file]
 	}
 	
 	
@@ -199,21 +181,24 @@ class BayLang extends Plugin
 	/**
 	 * Get dest file path
 	 */
-	pure string getDestFilePath(BuildFile file, string lang)
+	pure string getDestFilePath(BundlerController control, ChainFile file, string lang)
 	{
 		string file_path = fs::concatArr([file.module.getPath(), lang, file.getBayPath()]);
 		
 		if (lang == "php")
 		{
 			file_path = re::replace("\\.bay$", ".php", file_path);
+			file_path = re::replace("\\.ui$", ".php", file_path);
 		}
 		else if (lang == "es6")
 		{
 			file_path = re::replace("\\.bay$", ".js", file_path);
+			file_path = re::replace("\\.ui$", ".js", file_path);
 		}
 		else if (lang == "nodejs")
 		{
 			file_path = re::replace("\\.bay$", ".js", file_path);
+			file_path = re::replace("\\.ui$", ".js", file_path);
 		}
 		else
 		{
@@ -228,7 +213,7 @@ class BayLang extends Plugin
 	/**
 	 * Get translator
 	 */
-	pure CoreTranslator getTranslator(string lang)
+	pure CoreTranslator getTranslator(BundlerController control, ChainFile file, string lang)
 	{
 		if (lang == "php")
 		{
@@ -238,22 +223,48 @@ class BayLang extends Plugin
 		}
 		if (lang == "es6")
 		{
+			/* Get config */
+			Dict conf = control.config
+				|> "plugins_opts", "Bayrell.Bundler.Plugins.BayLang", "es6"
+				|> default Dict {}
+			;
+			
+			/* Get settings */
+			bool use_module_name = conf.get("use_module_name", false);
+			bool use_strict = conf.get("use_strict", true);
+			bool enable_async_await = conf.get("enable_async_await", true);
+			bool emulate_async_await = conf.get("emulate_async_await", false);
+			
+			/* Create translator */
 			return new TranslatorES6
 			{
-				"use_module_name": false,
-				"use_strict": true,
-				"enable_async_await": true,
-				"emulate_async_await": true,
+				"use_module_name": use_module_name,
+				"use_strict": use_strict,
+				"enable_async_await": enable_async_await,
+				"emulate_async_await": emulate_async_await,
 			};
 		}
 		if (lang == "nodejs")
 		{
+			/* Get config */
+			Dict conf = control.config
+				|> "plugins_opts", "Bayrell.Bundler.Plugins.BayLang", "nodejs"
+				|> default Dict {}
+			;
+			
+			/* Get settings */
+			bool use_module_name = conf.get("use_module_name", false);
+			bool use_strict = conf.get("use_strict", true);
+			bool enable_async_await = conf.get("enable_async_await", true);
+			bool emulate_async_await = conf.get("emulate_async_await", false);
+			
+			/* Create translator */
 			return new TranslatorNode
 			{
-				"use_module_name": true,
-				"use_strict": true,
-				"enable_async_await": true,
-				"emulate_async_await": false,
+				"use_module_name": use_module_name,
+				"use_strict": use_strict,
+				"enable_async_await": enable_async_await,
+				"emulate_async_await": emulate_async_await,
 			};
 		}
 		return null;

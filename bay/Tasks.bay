@@ -24,9 +24,10 @@ use Runtime.lib;
 use Runtime.Task.TaskList;
 use Runtime.Task.TaskMethod;
 use Runtime.Task.TaskDriver;
-use Bayrell.Bundler.BuildFile;
-use Bayrell.Bundler.BuildModule;
-use Bayrell.Bundler.BundlerHelper;
+use Bayrell.Bundler.ChainBundle;
+use Bayrell.Bundler.ChainFile;
+use Bayrell.Bundler.ChainModule;
+use Bayrell.Bundler.BundlerController;
 use Bayrell.Bundler.Inotify;
 use Bayrell.Bundler.Module;
 
@@ -35,111 +36,36 @@ use Bayrell.Bundler.Module;
 class Tasks
 {
 	
-	/**
-	 * Load files
-	 * Chain: BundlerHelper::BUILD_MODULE
-	 */
-	async static BuildModule loadFiles(BuildModule build)
-	{
-		if (build.stop) return build;
-		if (build.module == null) return build;
-		
-		string module_path = build.module.getPath();
-		string path = fs::concat(module_path, "bay");
-		
-		bool exists = await fs::exists(path, @.base_path);
-		if (exists)
-		{
-			Collection<string> files = await fs::readDirectoryRecursive(path, @.base_path);
-			build <= module_path <= module_path;
-			build <= files <= files;
-		}
-		
-		return build;
-	}
-	
-	
-	
-	/**
-	 * Build
-	 * Chain: BundlerHelper::BUILD_MODULE
-	 */
-	async static BuildModule build(BuildModule build)
-	{
-		if (build.stop) return build;
-		if (build.files == null) return build;
-		
-		TaskDriver output = @.getDriver(classof TaskDriver);
-		Dict json = @.config("Bayrell.Bundler");
-		Collection<string> languages = json.get("languages");
-		
-		string files_path = fs::concat(build.module_path, "bay");
-		for (int i=0; i<build.files.count(); i++)
-		{
-			string file_name = fs::concat(files_path, build.files.item(i));
-			BuildFile file = new BuildFile
-			{
-				"relative_path": build.files.item(i),
-				"file_path": file_name,
-				"ext": rs::extname(file_name),
-				"module": build.module,
-				"languages": languages,
-				"log_files": build.log_files,
-			};
-			
-			/* Build file */
-			BuildFile file = @.chain(BundlerHelper::BUILD_FILE_CHECK, [ file ]);
-			if (not file.stop)
-			{
-				output.writeln( fs::concat(@.base_path, file_name) );
-				file = await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);
-				
-				/* Stop if error */
-				if (file.parse_error != null)
-				{
-					/*return build;*/
-				}
-			}
-		}
-		
-		return build;
-	}
-	
-	
 	
 	/**
 	 * Change File
 	 */
 	static async void onChangeFile(Inotify inotify, string file_name)
 	{
-		Dict json = @.config("Bayrell.Bundler");
-		Collection<string> languages = json.get("languages");
+		BundlerController control = await BundlerController::getController();
 		
 		if (rs::strpos(file_name, @.base_path) != 0) return;
 		
 		string file_path = rs::substr( file_name, rs::strlen(@.base_path) );
-		Module module = BundlerHelper::findModule(inotify.modules, file_path);
-		
-		if (module == null) return;
-		
-		/* Write file name */
-		TaskDriver output = @.getDriver(classof TaskDriver);
+		Module module = BundlerController::findModule(control.modules, file_path);
 		
 		/* Create build container */
-		BuildFile file = new BuildFile
+		ChainFile file = new ChainFile
 		{
+			"module": module,
 			"file_path": file_path,
 			"ext": rs::extname(file_path),
-			"module": module,
-			"languages": languages,
 		};
 		
 		/* Build file */
-		BuildFile file = @.chain(BundlerHelper::BUILD_FILE_CHECK, [ file ]);
+		file = control.chainBuildCheckFile(file);
 		if (not file.stop)
 		{
-			output.writeln( fs::concat(@.base_path, file_path) );
-			await @.chainAwait(BundlerHelper::BUILD_FILE, [ file ]);
+			control.writeln( fs::concat(@.base_path, file_path) );
+			await control.chainBuildFile(file);
+			
+			/* Bundle */
+			control.bundleByModule(module.module_name);
 		}
 	}
 	
@@ -149,21 +75,19 @@ class Tasks
 	 * Watch changes
 	 */
 	@TaskMethod{ "alias": "watch" }
-	static async void watch()
+	static async void task_watch()
 	{
-		Dict json = @.config("Bayrell.Bundler");
-		TaskDriver output = @.getDriver(classof TaskDriver);
-		Collection<string> modules_dir = json.get("modules", []);
-		Collection<Module> modules = await BundlerHelper::getModules();
+		BundlerController control = await BundlerController::getController();
 		
 		/* Get notify driver */
 		Inotify inotify = new Inotify("bundler-inotify");
 		await inotify.createNotify();
 		inotify.onChangeFile = method static::onChangeFile;
 		inotify.changeTimeout = 500;
-		inotify.modules = modules;
+		inotify.modules = control.modules;
 		@.addObject(inotify);
 		
+		Collection<string> modules_dir = control.config |> "modules" |> default Collection [];
 		for (int i=0; i<modules_dir.count(); i++)
 		{
 			string dir = modules_dir.item(i);
@@ -171,7 +95,7 @@ class Tasks
 			await inotify.addFolder(dir_path);
 		}
 		
-		output.writeln("Start watch");
+		control.writeln("Start watch");
 		while (true)
 		{
 			await rtl::sleep(100);
@@ -183,12 +107,36 @@ class Tasks
 	/**
 	 * Build project
 	 */
-	/*
 	@TaskMethod{ "alias": "build" }
-	static async void build()
+	static async void task_build()
 	{
+		BundlerController control = await BundlerController::getController();
+		
+		/* Build bundles */
+		Collection<Dict> build_items = control.config |> "build" |> default [];
+		for (int i=0; i<build_items.count(); i++)
+		{
+			Vector<string> builded_modules = new Vector();
+			Dict bundle_conf = build_items.item(i);
+			
+			/* Get params */
+			Collection<string> build_modules = bundle_conf |> "modules" |> default Collection [];
+			
+			/* Build modules */
+			for (int j=0; j<build_modules.count(); j++)
+			{
+				string module_name = build_modules.item(j);
+				if (builded_modules.has(module_name)) continue;
+				
+				this.chainBuildModule(module_name);
+				builded_modules.set(module_name, true);
+			}
+			
+			/* Make bundle */
+			this.chainBundle(bundle_conf);
+		}
+		
 	}
-	*/
 	
 	
 	
@@ -196,18 +144,17 @@ class Tasks
 	 * Show modules
 	 */
 	@TaskMethod{ "alias": "modules" }
-	static async void modules()
+	static async void task_modules()
 	{
-		TaskDriver output = @.getDriver(classof TaskDriver);
-		Collection<string> modules = await BundlerHelper::getModules();
+		BundlerController control = await BundlerController::getController();
 		
 		/* Output list of modules */
-		output.writeln("Modules:");
-		modules.each
+		control.output.writeln("Modules:");
+		control.modules.each
 		(
-			void (Module item) use (output)
+			void (Module item) use (control)
 			{
-				output.writeln("  " ~ item.module_name)
+				control.output.writeln("  " ~ item.module_name)
 			}
 		);
 	}
@@ -239,12 +186,12 @@ class Tasks
 	 * Make symlinks
 	 */
 	@TaskMethod{ "alias": "make_symlinks" }
-	static async void make_symlinks()
+	static async void task_make_symlinks()
 	{
-		Collection<Module> modules = await BundlerHelper::getModules();
-		for (int i=0; i<modules.count(); i++)
+		BundlerController control = await BundlerController::getController();
+		for (int i=0; i<control.modules.count(); i++)
 		{
-			Module module = modules.item(i);
+			Module module = control.modules.item(i);
 			
 			string module_path = fs::concat(module.lib_path, module.module_name);
 			string assets_path = fs::concat("/web/assets/", module.module_name);
@@ -264,45 +211,34 @@ class Tasks
 	 * Make module
 	 */
 	@TaskMethod{ "alias": "make" }
-	static async void make()
+	static async void task_make()
 	{
 		int sz = @.cli_args.count();
 		string module_name = @.cli_args.get(2, "");
-		Collection<Module> modules = await BundlerHelper::getModules();
-		TaskDriver output = @.getDriver(classof TaskDriver);
-		Module module = modules.findItem( lib::equalAttr("module_name", module_name) );
+		BundlerController control = await BundlerController::getController();
+		Module module = control.findModule(module_name);
 		
 		if (module_name == "")
 		{
-			output.writeln("Type module name:");
-			modules.each
+			control.writeln("Type module name:");
+			control.modules.each
 			(
-				void (Module item) use (output)
+				void (Module item) use (control)
 				{
-					output.writeln("  " ~ item.module_name)
+					control.writeln("  " ~ item.module_name)
 				}
 			);
 			return;
 		}
 		else if (module == null)
 		{
-			output.writeln("Wrong module name " ~ module_name);
+			control.writeln("Wrong module name " ~ module_name);
 			return;
 		}
 		
-		/* Chain module build */
-		await @.chainAwait
-		(
-			BundlerHelper::BUILD_MODULE,
-			[
-				new BuildModule
-				{
-					"module": module,
-					"log_files": false,
-				}
-			]
-		);
 		
+		/* Run module build chain */
+		control.buildModule(module_name);
 	}
 	
 	
@@ -311,25 +247,13 @@ class Tasks
 	 * Make all modules
 	 */
 	@TaskMethod{ "alias": "make_all" }
-	static async void make_all()
+	static async void task_make_all()
 	{
-		Collection<Module> modules = await BundlerHelper::getModules();
-		for (int i=0; i<modules.count(); i++)
+		BundlerController control = await BundlerController::getController();
+		for (int i=0; i<control.modules.count(); i++)
 		{
-			Module module = modules.item(i);
-			
-			/* Chain module build */
-			await @.chainAwait
-			(
-				BundlerHelper::BUILD_MODULE,
-				[
-					new BuildModule
-					{
-						"module": module,
-						"log_files": false,
-					}
-				]
-			);
+			Module module = control.modules.item(i);
+			control.buildModule(module.module_name);
 		}
 	}
 	

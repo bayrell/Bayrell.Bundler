@@ -1,0 +1,106 @@
+/*!
+ *  Bayrell Bundler
+ *
+ *  (c) Copyright 2020 "Ildar Bikmamatov" <support@bayrell.org>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+namespace Bayrell.Bundler;
+
+use Runtime.fs;
+use Runtime.rs;
+use Runtime.BaseStruct;
+use Runtime.Task.TaskDriver;
+use Bayrell.Bundler.BundlerController;
+use Bayrell.Bundler.ChainFile;
+use Bayrell.Bundler.Module;
+
+
+struct ChainModule extends BaseStruct
+{
+	Dict config = null;
+	Collection<string> languages = null;
+	Module module = null;
+	string module_path = "";
+	Collection<string> files = null;
+	bool stop = false;
+	bool log_files = true;
+	
+	
+	
+	/**
+	 * Load files
+	 * Chain: BundlerController::BUILD_MODULE
+	 */
+	async static ChainModule loadFiles(BundlerController control, ChainModule chain)
+	{
+		if (chain.stop) return chain;
+		if (chain.module == null) return chain;
+		
+		string module_path = chain.module.getPath();
+		string path = fs::concat(module_path, "bay");
+		
+		bool exists = await fs::exists(path, @.base_path);
+		if (exists)
+		{
+			Collection<string> files = await fs::readDirectoryRecursive(path, @.base_path);
+			chain <= module_path <= module_path;
+			chain <= files <= files;
+		}
+		
+		return [control, chain];
+	}
+	
+	
+	
+	/**
+	 * Build
+	 * Chain: BundlerController::BUILD_MODULE
+	 */
+	async static ChainModule buildModule(BundlerController control, ChainModule chain)
+	{
+		if (chain.stop) return chain;
+		if (chain.files == null) return chain;
+		
+		string files_path = fs::concat(chain.module_path, "bay");
+		for (int i=0; i<chain.files.count(); i++)
+		{
+			string file_relative_path = chain.files.item(i);
+			string file_name = fs::concat(files_path, file_relative_path);
+			ChainFile file = new ChainFile
+			{
+				"module": chain.module,
+				"file_path": file_name,
+				"ext": rs::extname(file_name),
+			};
+			
+			/* Build file */
+			file = control.chainBuildCheckFile(file);
+			if (not file.stop)
+			{
+				control.writeln( fs::concat(@.base_path, file_name) );
+				file = await control.chainBuildFile(file);
+				
+				/* Stop if error */
+				if (file.parse_error != null)
+				{
+					/*return chain;*/
+				}
+			}
+		}
+		
+		return [control, chain];
+	}
+	
+}

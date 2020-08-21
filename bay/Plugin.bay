@@ -22,7 +22,7 @@ use Runtime.BaseStruct;
 use Runtime.Core.Context;
 
 
-class Plugin
+static class Plugin
 {
 	
 	/**

@@ -22,15 +22,15 @@ use Runtime.fs;
 use Runtime.rs;
 use Runtime.BaseStruct;
 use Runtime.Exceptions.RuntimeException;
+use Bayrell.Bundler.BundlerController;
 use Bayrell.Bundler.Module;
 
 
-struct BuildFile extends BaseStruct
+struct ChainFile extends BaseStruct
 {
 	string file_path = "";
 	string ext = "";
 	Module module = null;
-	Collection<string> languages = null;
 	string content = "";
 	var ast = null;
 	bool stop = false;
@@ -45,9 +45,10 @@ struct BuildFile extends BaseStruct
 	{
 		if (this.module == null) return "";
 	
-		string module_path = this.module.getPath();
-		Collection<string> module_path_arr = rs::explode("/", module_path);
-		Collection<string> file_path_arr = rs::explode("/", this.file_path);
+		string module_path = fs::addFirstSlash( this.module.getPath() );
+		string file_path = fs::addFirstSlash( this.file_path );
+		Collection<string> module_path_arr = rs::explode(fs::DIRECTORY_SEPARATOR, module_path);
+		Collection<string> file_path_arr = rs::explode(fs::DIRECTORY_SEPARATOR, file_path);
 		
 		int i = 0;
 		while
@@ -60,10 +61,24 @@ struct BuildFile extends BaseStruct
 		
 		if (i < file_path_arr.count() and file_path_arr[i] == "bay")
 		{
-			return "/" ~ rs::join("/", file_path_arr.slice(i + 1));
+			return fs::DIRECTORY_SEPARATOR ~ rs::join(fs::DIRECTORY_SEPARATOR, file_path_arr.slice(i + 1));
 		}
 		
 		return "";
+	}
+	
+	
+	
+	/**
+	 * Check file
+	 * Chain: BundlerController::CHAIN_BUILD_FILE_CHECK
+	 */
+	static ChainFile checkFile(BundlerController control, ChainFile file)
+	{
+		if (file.stop) return file.copy{ "stop": true };
+		if (file.getBayPath() == "") return file.copy{ "stop": true };
+		if (file.module == null) return file.copy{ "stop": true };
+		return [ control, file ];
 	}
 	
 }

@@ -1,0 +1,304 @@
+/*!
+ *  Bayrell Bundler
+ *
+ *  (c) Copyright 2020 "Ildar Bikmamatov" <support@bayrell.org>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+namespace Bayrell.Bundler;
+
+use Runtime.fs;
+use Runtime.lib;
+use Runtime.BaseObject;
+use Runtime.BaseStruct;
+use Runtime.Core.CoreObject;
+use Runtime.Task.TaskDriver;
+use Bayrell.Bundler.ChainBundle;
+use Bayrell.Bundler.ChainFile;
+use Bayrell.Bundler.ChainModule;
+use Bayrell.Bundler.Module;
+
+
+class BundlerController extends CoreObject
+{
+	/* Chains */
+	static const string CHAIN_BUILD_MODULE = "Bayrell.Bundler.BundlerController::CHAIN_BUILD_MODULE";
+	static const string CHAIN_BUILD_FILE = "Bayrell.Bundler.BundlerController::CHAIN_BUILD_FILE";
+	static const string CHAIN_BUILD_FILE_CHECK = "Bayrell.Bundler.BundlerController::CHAIN_BUILD_FILE_CHECK";
+	static const string CHAIN_BUNDLE = "Bayrell.Bundler.BundlerController::CHAIN_BUNDLE";
+	
+	/* Chain pos */
+	static const int BUILD_FILE_FILTER = 1000;
+	static const int BUILD_FILE_READ_FILE = 2000;
+	static const int BUILD_FILE_PARSE_FILE = 3000;
+	static const int BUILD_FILE_SAVE_FILE = 4000;
+	
+	/* Data */
+	Dict config = null;
+	Collection<Module> modules = null;
+	Collection<string> languages = null;
+	bool log_files = false;
+	TaskDriver output = null;
+	
+	
+	
+	/**
+	 * Create class
+	 */
+	void constructor()
+	{
+		parent("bundler-controller");
+		this.config = @.config("Bayrell.Bundler");
+		this.output = @.getDriver(classof TaskDriver);
+		this.languages = this.config.get("languages");
+		
+		/* Register object in context */
+		@.addObject(this);
+	}
+	
+	
+	
+	/**
+	 * Returns controller
+	 */
+	static async BundlerController getController()
+	{
+		BundlerController control = @.getObject("bundler-controller");
+		if (control == null)
+		{
+			control = rtl::newInstance( this.getCurrentClassName() );
+			
+			/* Load modules */
+			await control.getModules();
+		}
+		return control;
+	}
+	
+	
+	
+	/**
+	 * Returns modules
+	 */
+	async Collection<Module> getModules()
+	{
+		if (this.modules == null)
+		{
+			Collection<string> modules_dir = this.config |> "modules" |> default [];
+			this.modules = await static::loadModules(modules_dir);
+		}
+		return this.modules;
+	}
+	
+	
+	
+	/**
+	 * Returns module by name
+	 */
+	Module findModuleByName(string module_name)
+	{
+		return this.modules.findItem( lib::equalAttr("module_name", module_name) );
+	}
+	
+	
+	
+	/**
+	 * Write line
+	 */
+	void writeln(string msg)
+	{
+		this.output.writeln(msg);
+	}
+	
+	
+	
+	/**
+	 * Run module build chain
+	 */
+	async void chainBuildModule(string module_name)
+	{
+		Module module = this.findModuleByName(module_name);
+		if (module == null)
+		{
+			return;
+		}
+		
+		/* Chain module build */
+		await @.chainAwait(static::CHAIN_BUILD_MODULE, [this, module]);
+	}
+	
+	
+	
+	/**
+	 * Run file build chain
+	 */
+	async ChainFile chainBuildCheckFile(ChainFile file)
+	{
+		return @.chain(static::CHAIN_BUILD_FILE_CHECK, [ this, file ]) |> attr 1;
+	}
+	
+	
+	
+	/**
+	 * Run file build chain
+	 */
+	async ChainFile chainBuildFile(ChainFile file)
+	{
+		return await @.chainAwait(static::CHAIN_BUILD_FILE, [ this, file ]) |> attr 1;
+	}
+	
+	
+	
+	/**
+	 * Run module build chain
+	 */
+	async void bundleByModule(string module_name)
+	{
+		Module module = this.findModuleByName(module_name);
+		if (module == null)
+		{
+			return;
+		}
+		
+		Dict build_conf = static::getBuildConf(this.conf, module);
+		if (build_conf == null)
+		{
+			return;
+		}
+		
+		this.chainBundle(build_conf);
+	}
+	
+	
+	
+	/**
+	 * Run module build chain
+	 */
+	async void chainBundle(Dict bundle_conf)
+	{
+		Vector<Module> modules_to_build = new Vector();
+		
+		Collection<string> build_modules = bundle_conf |> "modules" |> default Collection [];
+		for (int j=0; j<build_modules.count(); j++)
+		{
+			string module_name = build_modules.item(j);
+			Module module = this.modules.findItem( lib::equalAttr("module_name", module_name) );
+			modules_to_build.push(module);
+		}
+		
+		string dest = bundle_conf |> "dest" |> default string "";
+		string lang = bundle_conf |> "lang" |> default string "";
+		string dest = bundle_conf |> "dest" |> default string "";
+		await @.chainAwait
+		(
+			static::CHAIN_BUNDLE,
+			[
+				this,
+				new ChainBundle
+				{
+					"modules": modules_to_build.toCollection(),
+					"lang": lang,
+					"dest": dest,
+				}
+			]
+		);
+	}
+	
+	
+	
+	/**
+	 * Returns modules from dirs
+	 */
+	static async Collection<Module> loadModules(Collection<string> modules_dir)
+	{
+		/*
+		Collection<string> items =
+			@.config("Bayrell.Bundler") |> "modules" |> default []
+			|> await .mapAsync( curry fs::readDir(?, @.base_path) )
+			|> .flat(1)
+			|> default []
+		;
+		*/
+		
+		Vector<Module> items = new Vector();
+		for (int i=0; i<modules_dir.count(); i++)
+		{
+			string dir = modules_dir.item(i);
+			Collection arr = await fs::readDir(dir, @.base_path);
+			for (int j=0; j<arr.count(); j++)
+			{
+				string module_name = arr.item(j);
+				items.push
+				(
+					new Module
+					{
+						"module_name": module_name,
+						"lib_path": dir,
+					}
+				);
+			}
+		}
+		
+		return items.toCollection();
+	}
+	
+	
+	
+	/**
+	 * Find module by file_path
+	 */
+	pure Module findModule(Collection<Module> modules, string file_path)
+	{
+		file_path = fs::addFirstSlash(file_path);
+		
+		int str_len = 0;
+		Module find = null;
+		for (int i=0; i<modules.count(); i++)
+		{
+			Module module = modules.item(i);
+			string module_path = fs::addFirstSlash( module.getPath() ~ fs::DIRECTORY_SEPARATOR );
+			int module_path_len = rs::strlen(module_path);
+			
+			if (rs::strpos(file_path, module_path) == 0 and module_path_len > str_len)
+			{
+				find = module;
+				str_len = module_path_len;
+			}
+		}
+		
+		return find;
+	}
+	
+	
+	
+	/**
+	 * Get build conf
+	 */
+	pure Dict getBuildConf(Dict conf, Module module)
+	{
+		string module_name = module.module_name;
+		Collection<Dict> build_items = conf |> "build" |> default [];
+		for (int i=0; i<build_items.count(); i++)
+		{
+			Dict build_conf = build_items.item(i);
+			Collection<string> build_modules = build_conf |> "modules" |> default Collection [];
+			if (build_modules.indexOf(module_name) != -1)
+			{
+				return build_conf;
+			}
+		}
+		
+		return null;
+	}
+	
+}

@@ -27,7 +27,7 @@ use Runtime.Core.Driver;
 use Runtime.Core.Entity;
 use Runtime.Core.LambdaChain;
 use Runtime.Core.LambdaChainDeclare;
-use Bayrell.Bundler.BundlerHelper;
+use Bayrell.Bundler.BundlerController;
 
 
 class ModuleDescription implements ModuleDescriptionInterface
@@ -69,26 +69,34 @@ class ModuleDescription implements ModuleDescriptionInterface
 	pure Collection<Dict> entities() => 
 	[
 		/* Declare Layout Chain */
-		new LambdaChainDeclare{ "name": BundlerHelper::CHANGE_FILE_CHAIN },
-		new LambdaChainDeclare{ "name": BundlerHelper::BUILD_PROJECT },
-		new LambdaChainDeclare{ "name": BundlerHelper::BUILD_MODULE },
-		new LambdaChainDeclare{ "name": BundlerHelper::BUILD_FILE },
+		new LambdaChainDeclare{ "name": BundlerController::CHAIN_BUNDLE },
+		new LambdaChainDeclare{ "name": BundlerController::CHAIN_BUILD_MODULE },
+		new LambdaChainDeclare{ "name": BundlerController::CHAIN_BUILD_FILE },
+		new LambdaChainDeclare{ "name": BundlerController::CHAIN_BUILD_FILE_CHECK },
 		
 		/* Add Entity */
 		new Entity{ "name": "Bayrell.Bundler.Tasks" },
 		
-		/* Build module */
+		/* Chain file */
 		new LambdaChain
 		{
-			"name": BundlerHelper::BUILD_MODULE,
-			"value": "Bayrell.Bundler.Tasks::loadFiles",
+			"name": BundlerController::CHAIN_BUILD_FILE_CHECK,
+			"value": "Bayrell.Bundler.ChainFile::checkFile",
+			"pos": 0,
+		}
+		
+		/* Chain module */
+		new LambdaChain
+		{
+			"name": BundlerController::CHAIN_BUILD_MODULE,
+			"value": "Bayrell.Bundler.ChainModule::loadFiles",
 			"is_async": true,
 			"pos": 1000,
 		},
 		new LambdaChain
 		{
-			"name": BundlerHelper::BUILD_MODULE,
-			"value": "Bayrell.Bundler.Tasks::build",
+			"name": BundlerController::CHAIN_BUILD_MODULE,
+			"value": "Bayrell.Bundler.ChainModule::buildModule",
 			"is_async": true,
 			"pos": 2000,
 		},

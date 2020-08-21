@@ -18,19 +18,14 @@
 
 namespace Bayrell.Bundler;
 
-use Runtime.fs;
-use Runtime.rs;
 use Runtime.BaseStruct;
-use Bayrell.Bundler.BuildFile;
-use Bayrell.Bundler.BundlerHelper;
 use Bayrell.Bundler.Module;
 
 
-struct BuildModule extends BaseStruct
+struct ChainBundle extends BaseStruct
 {
-	Module module = null;
-	string module_path = "";
-	Collection<string> files = null;
-	bool stop = false;
-	bool log_files = true;
+	Collection<Module> modules = null;
+	string bundle_content = "";
+	string lang = "";
+	string dest = "";
 }
