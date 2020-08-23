@@ -203,7 +203,7 @@ class BundlerController extends CoreObject
 		{
 			string module_name = build_modules.item(j);
 			Module module = this.modules.findItem( lib::equalAttr("module_name", module_name) );
-			modules_to_build.push(module);
+			if (module != null) modules_to_build.push(module);
 		}
 		
 		string dest = bundle_conf |> "dest" |> default string "";
