@@ -228,7 +228,7 @@ static class BayLang extends Plugin
 		{
 			/* Get config */
 			Dict conf = control.config
-				|> "plugins_opts", "Bayrell.Bundler.Plugins.BayLang", "es6"
+				|> "options", "Bayrell.Bundler.Plugins.BayLang", "es6"
 				|> default Dict {}
 			;
 			
@@ -251,7 +251,7 @@ static class BayLang extends Plugin
 		{
 			/* Get config */
 			Dict conf = control.config
-				|> "plugins_opts", "Bayrell.Bundler.Plugins.BayLang", "nodejs"
+				|> "options", "Bayrell.Bundler.Plugins.BayLang", "nodejs"
 				|> default Dict {}
 			;
 			

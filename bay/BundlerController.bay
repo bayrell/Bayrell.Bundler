@@ -180,13 +180,13 @@ class BundlerController extends CoreObject
 			return;
 		}
 		
-		Dict build_conf = static::getBuildConf(this.config, module);
-		if (build_conf == null)
+		Dict bundle_conf = static::getBundleConf(this.config, module);
+		if (bundle_conf == null)
 		{
 			return;
 		}
 		
-		await this.chainBundle(build_conf);
+		await this.chainBundle(bundle_conf);
 	}
 	
 	
@@ -294,17 +294,17 @@ class BundlerController extends CoreObject
 	/**
 	 * Get build conf
 	 */
-	pure Dict getBuildConf(Dict conf, Module module)
+	pure Dict getBundleConf(Dict conf, Module module)
 	{
 		string module_name = module.module_name;
-		Collection<Dict> build_items = conf |> "build" |> default [];
-		for (int i=0; i<build_items.count(); i++)
+		Collection<Dict> bundle_items = conf |> "bundles" |> default [];
+		for (int i=0; i<bundle_items.count(); i++)
 		{
-			Dict build_conf = build_items.item(i);
-			Collection<string> build_modules = build_conf |> "modules" |> default Collection [];
-			if (build_modules.indexOf(module_name) != -1)
+			Dict bundle_conf = bundle_items.item(i);
+			Collection<string> modules = bundle_conf |> "modules" |> default Collection [];
+			if (modules.indexOf(module_name) != -1)
 			{
-				return build_conf;
+				return bundle_conf;
 			}
 		}
 		
