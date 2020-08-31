@@ -203,7 +203,7 @@ class Tasks
 			static::make_link(module_path, assets_path, "resources");
 			
 			/* ES6 folder */
-			static::make_link(module_path, assets_path, "es6");
+			/*static::make_link(module_path, assets_path, "es6");*/
 		}
 		
 	}
