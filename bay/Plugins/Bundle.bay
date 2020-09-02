@@ -69,7 +69,7 @@ static class Bundle extends Plugin
 	{
 		if (chain.lang != "es6") return [control, chain];
 		
-		Vector<string> files_content = new Vector();
+		Vector<string> assets_content = new Vector();
 		Collection<Module> modules = chain.modules;
 		for (int i=0; i<modules.count(); i++)
 		{
@@ -83,12 +83,12 @@ static class Bundle extends Plugin
 				|> default {}
 			;
 			
-			/* Get module files */
-			Collection<string> files = module_json |> "files" |> default Collection [];
+			/* Get module assets */
+			Collection<string> assets = module_json |> "assets" |> default Collection [];
 			
-			for (int j=0; j<files.count(); j++)
+			for (int j=0; j<assets.count(); j++)
 			{
-				string file_name = files.item(j);
+				string file_name = assets.item(j);
 				string file_path = fs::concatArr([ module_path, "es6", file_name ]) ~ ".js";
 				
 				/* Read file */
@@ -96,12 +96,12 @@ static class Bundle extends Plugin
 				if (file_exists)
 				{
 					string file_content = await fs::readFile(file_path, "utf8", @.base_path);
-					if (file_content != "") files_content.push(file_content);
+					if (file_content != "") assets_content.push(file_content);
 				}
 			}
 		}
 		
-		chain <= bundle_content <= rs::join("\n", files_content);
+		chain <= bundle_content <= rs::join("\n", assets_content);
 		
 		return [control, chain];
 	}

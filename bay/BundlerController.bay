@@ -134,7 +134,7 @@ class BundlerController extends CoreObject
 		}
 		
 		/* Chain module build */
-		await @.chainAwait
+		await @.chainAsync
 		(
 			static::CHAIN_BUILD_MODULE,
 			[
@@ -164,7 +164,7 @@ class BundlerController extends CoreObject
 	 */
 	async ChainFile chainBuildFile(ChainFile file)
 	{
-		return await @.chainAwait(static::CHAIN_BUILD_FILE, [ this, file ]) |> attr 1;
+		return await @.chainAsync(static::CHAIN_BUILD_FILE, [ this, file ]) |> attr 1;
 	}
 	
 	
@@ -209,7 +209,7 @@ class BundlerController extends CoreObject
 		string dest = bundle_conf |> "dest" |> default string "";
 		string lang = bundle_conf |> "lang" |> default string "";
 		string dest = bundle_conf |> "dest" |> default string "";
-		await @.chainAwait
+		await @.chainAsync
 		(
 			static::CHAIN_BUNDLE,
 			[
