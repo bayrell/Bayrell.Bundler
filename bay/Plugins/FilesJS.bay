@@ -1,0 +1,142 @@
+/*!
+ *  Bayrell Bundler
+ *
+ *  (c) Copyright 2020 "Ildar Bikmamatov" <support@bayrell.org>
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+namespace Bayrell.Bundler.Plugins;
+
+use Runtime.fs;
+use Runtime.re;
+use Runtime.BaseStruct;
+use Runtime.Core.Context;
+use Runtime.Core.Entity;
+use Runtime.Core.LambdaChain;
+use Runtime.Task.TaskDriver;
+use Bayrell.Bundler.BundlerController;
+use Bayrell.Bundler.ChainFile;
+use Bayrell.Bundler.Plugin;
+
+
+static class FilesJS extends Plugin
+{
+	
+	/**
+	 * Extend entities
+	 */
+	pure Collection<BaseStruct> extendEntities(Context c, Collection<BaseStruct> entities) =>
+		entities
+			
+			.pushIm
+			(
+				new LambdaChain
+				{
+					"name": BundlerController::CHAIN_BUILD_FILE,
+					"value": "Bayrell.Bundler.Plugins.FilesJS::readFile",
+					"is_async": true,
+					"pos": BundlerController::BUILD_FILE_READ_FILE,
+				}
+			)
+			
+			.pushIm
+			(
+				new LambdaChain
+				{
+					"name": BundlerController::CHAIN_BUILD_FILE,
+					"value": "Bayrell.Bundler.Plugins.FilesJS::saveFile",
+					"is_async": true,
+					"pos": BundlerController::BUILD_FILE_SAVE_FILE,
+				}
+			)
+	;
+	
+	
+	
+	/**
+	 * Check file
+	 */
+	static bool check(ChainFile file)
+	{
+		if (file.stop) return false;
+		if (file.getBayPath() == "") return false;
+		if (file.module == null) return false;
+		if (file.ext != "js") return false;
+		return true;
+	}
+	
+	
+	
+	/**
+	 * Read file
+	 */
+	async static ChainFile readFile(BundlerController control, ChainFile file)
+	{
+		if (not static::check(file)) return [control, file];
+		if (file.content != "") return [control, file];
+		
+		/* Read file */
+		string content = await fs::readFile(file.file_path, "utf8", @.base_path);
+		file <= content <= content;
+		
+		return [control, file]
+	}
+	
+	
+	
+	/**
+	 * Save file
+	 */
+	async static ChainFile saveFile(BundlerController control, ChainFile file)
+	{
+		if (not static::check(file)) return [control, file];
+		if (file.content == "") return [control, file];
+		
+		/* Save file to other languages */
+		for (int i=0; i<control.languages.count(); i++)
+		{
+			string lang = control.languages.item(i);
+			if (lang != "es6" and lang != "nodejs") continue;
+			
+			/* Get destination path */
+			string file_path = static::getDestFilePath(control, file, lang);
+			
+			/* Save to file */
+			string dir_name = rs::dirname(file_path);
+			await fs::mkdir(dir_name, @.base_path);
+			await fs::saveFile(file_path, file.content, "utf8", @.base_path);
+			if (control.log_files)
+			{
+				control.writeln( "=>" ~ fs::concat(@.base_path, file_path) );
+			}
+		}
+		
+		/* Output ok */
+		if (control.log_files) control.writeln( "Ok" );
+		
+		return [control, file]
+	}
+	
+	
+	
+	/**
+	 * Get dest file path
+	 */
+	pure string getDestFilePath(BundlerController control, ChainFile file, string lang)
+	{
+		string file_path = fs::concatArr([file.module.getPath(), lang, file.getBayPath()]);
+		return file_path;
+	}
+	
+}
