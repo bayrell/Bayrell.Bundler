@@ -28,6 +28,7 @@ use Bayrell.Bundler.ChainBundle;
 use Bayrell.Bundler.ChainFile;
 use Bayrell.Bundler.ChainModule;
 use Bayrell.Bundler.Module;
+use Bayrell.Bundler.ModuleFile;
 
 
 class BundlerController extends CoreObject
@@ -202,11 +203,36 @@ class BundlerController extends CoreObject
 		for (int j=0; j<build_modules.count(); j++)
 		{
 			string module_name = build_modules.item(j);
-			Module module = this.modules.findItem( lib::equalAttr("module_name", module_name) );
-			if (module != null) modules_to_build.push(module);
+			
+			/* Module file */
+			if (module_name[0] == "@")
+			{
+				module_name = rs::substr(module_name, 1);
+				var arr = rs::split("/", module_name, 1);
+				module_name = arr[0];
+				string file_name = arr[1];
+				
+				Module module = this.modules.findItem( lib::equalAttr("module_name", module_name) );
+				if (module != null)
+				{
+					ModuleFile file = new ModuleFile
+					{
+						"file_name": file_name,
+						"module_name": module_name,
+						"lib_path": module.lib_path,
+					};
+					modules_to_build.push(file);
+				}
+			}
+			
+			/* Module */
+			else
+			{
+				Module module = this.modules.findItem( lib::equalAttr("module_name", module_name) );
+				if (module != null) modules_to_build.push(module);
+			}
 		}
 		
-		string dest = bundle_conf |> "dest" |> default string "";
 		string lang = bundle_conf |> "lang" |> default string "";
 		string dest = bundle_conf |> "dest" |> default string "";
 		await @.chainAsync

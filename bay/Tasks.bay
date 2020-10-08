@@ -110,13 +110,21 @@ class Tasks
 	@TaskMethod{ "alias": "build" }
 	static async void task_build()
 	{
+		Map<bool> builded_modules = new Map();
+		
+		/* Make all modules */
 		BundlerController control = await BundlerController::getController();
+		for (int i=0; i<control.modules.count(); i++)
+		{
+			Module module = control.modules.item(i);
+			await control.chainBuildModuleByName(module.module_name);
+			builded_modules.set(module.module_name, true);
+		}
 		
 		/* Build bundles */
 		Collection<Dict> build_items = control.config |> "bundles" |> default [];
 		for (int i=0; i<build_items.count(); i++)
 		{
-			Map<bool> builded_modules = new Map();
 			Dict bundle_conf = build_items.item(i);
 			
 			/* Get params */
@@ -127,6 +135,7 @@ class Tasks
 			{
 				string module_name = build_modules.item(j);
 				if (builded_modules.has(module_name)) continue;
+				if (module_name[0] == "@") continue;
 				
 				await control.chainBuildModuleByName(module_name);
 				builded_modules.set(module_name, true);
@@ -135,7 +144,6 @@ class Tasks
 			/* Make bundle */
 			await control.chainBundle(bundle_conf);
 		}
-		
 	}
 	
 	
@@ -172,14 +180,17 @@ class Tasks
 		string dest = fs::concat(assets_path, kind);
 		string rel = fs::relative(assets_path, src);
 		
-		await fs::mkdir(assets_path, @.base_path);
 		if (await fs::exists(src, @.base_path))
 		{
-			await fs::unlink(dest, @.base_path);
-			await fs::symlink(rel, dest, @.base_path);
-			
-			TaskDriver output = @.getDriver(classof TaskDriver);
-			output.writeln(fs::concat(@.base_path, dest) ~ " -> " ~ rel);
+			await fs::mkdir(assets_path, @.base_path);
+			if (await fs::exists(src, @.base_path))
+			{
+				await fs::unlink(dest, @.base_path);
+				await fs::symlink(rel, dest, @.base_path);
+				
+				TaskDriver output = @.getDriver(classof TaskDriver);
+				output.writeln(fs::concat(@.base_path, dest) ~ " -> " ~ rel);
+			}
 		}
 	}
 	
@@ -192,15 +203,16 @@ class Tasks
 	static async void task_make_symlinks()
 	{
 		BundlerController control = await BundlerController::getController();
+		string assets_dir = control.config |> "assets" |> default string "assets/";
 		for (int i=0; i<control.modules.count(); i++)
 		{
 			Module module = control.modules.item(i);
 			
 			string module_path = fs::concat(module.lib_path, module.module_name);
-			string assets_path = fs::concat("/web/assets/", module.module_name);
+			string assets_path = fs::concat(assets_dir, module.module_name);
 			
 			/* Resources folder */
-			static::make_link(module_path, assets_path, "resources");
+			await static::make_link(module_path, assets_path, "resources");
 			
 			/* ES6 folder */
 			/*static::make_link(module_path, assets_path, "es6");*/
@@ -243,21 +255,6 @@ class Tasks
 		await control.chainBuildModuleByName(module_name);
 	}
 	
-	
-	
-	/**
-	 * Make all modules
-	 */
-	@TaskMethod{ "alias": "make_all" }
-	static async void task_make_all()
-	{
-		BundlerController control = await BundlerController::getController();
-		for (int i=0; i<control.modules.count(); i++)
-		{
-			Module module = control.modules.item(i);
-			await control.chainBuildModuleByName(module.module_name);
-		}
-	}
 	
 }
 
