@@ -218,56 +218,60 @@ static class BayLang extends Plugin
 	 */
 	pure CoreTranslator getTranslator(BundlerController control, ChainFile file, string lang)
 	{
+		/* Get config */
+		Dict conf = control.config
+			|> "options", "Bayrell.Bundler.Plugins.BayLang", { lang }
+			|> default Dict {}
+		;
+		
+		bool backend = conf["backend"] |> default bool false;
+		bool frontend = conf["frontend"] |> default bool false;
+		bool enable_context = conf["enable_context"] |> default bool false;
+		bool enable_check_types = conf["enable_check_types"] |> default bool false;
+		bool enable_async_await = conf["enable_async_await"] |> default bool true;
+		bool emulate_async_await = conf["emulate_async_await"] |> default bool false;
+		bool use_module_name = conf["use_module_name"] |> default bool false;
+		bool use_strict = conf["use_strict"] |> default bool false;
+		
 		if (lang == "php")
 		{
+			/* Create translator */
 			return new TranslatorPHP
 			{
+				"backend": backend,
+				"frontend": frontend,
+				"enable_context": enable_context,
+				"enable_check_types": enable_check_types,
 			};
 		}
 		if (lang == "es6")
 		{
-			/* Get config */
-			Dict conf = control.config
-				|> "options", "Bayrell.Bundler.Plugins.BayLang", "es6"
-				|> default Dict {}
-			;
-			
-			/* Get settings */
-			bool use_module_name = conf.get("use_module_name", false);
-			bool use_strict = conf.get("use_strict", true);
-			bool enable_async_await = conf.get("enable_async_await", true);
-			bool emulate_async_await = conf.get("emulate_async_await", false);
-			
 			/* Create translator */
 			return new TranslatorES6
 			{
-				"use_module_name": use_module_name,
-				"use_strict": use_strict,
+				"backend": backend,
+				"frontend": frontend,
+				"enable_context": enable_context,
+				"enable_check_types": enable_check_types,
 				"enable_async_await": enable_async_await,
 				"emulate_async_await": emulate_async_await,
+				"use_module_name": use_module_name,
+				"use_strict": use_strict,
 			};
 		}
 		if (lang == "nodejs")
 		{
-			/* Get config */
-			Dict conf = control.config
-				|> "options", "Bayrell.Bundler.Plugins.BayLang", "nodejs"
-				|> default Dict {}
-			;
-			
-			/* Get settings */
-			bool use_module_name = conf.get("use_module_name", false);
-			bool use_strict = conf.get("use_strict", true);
-			bool enable_async_await = conf.get("enable_async_await", true);
-			bool emulate_async_await = conf.get("emulate_async_await", false);
-			
 			/* Create translator */
 			return new TranslatorNode
 			{
-				"use_module_name": use_module_name,
-				"use_strict": use_strict,
+				"backend": backend,
+				"frontend": frontend,
+				"enable_context": enable_context,
+				"enable_check_types": enable_check_types,
 				"enable_async_await": enable_async_await,
 				"emulate_async_await": emulate_async_await,
+				"use_module_name": use_module_name,
+				"use_strict": use_strict,
 			};
 		}
 		return null;
