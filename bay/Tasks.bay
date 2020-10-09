@@ -127,7 +127,7 @@ class Tasks
 		{
 			Dict bundle_conf = build_items.item(i);
 			
-			/* Get params */
+			/* Get modules */
 			Collection<string> build_modules = bundle_conf |> "modules" |> default Collection [];
 			
 			/* Build modules */
@@ -143,6 +143,59 @@ class Tasks
 			
 			/* Make bundle */
 			await control.chainBundle(bundle_conf);
+		}
+	}
+	
+	
+	
+	/**
+	 * Make module
+	 */
+	@TaskMethod{ "alias": "make" }
+	static async void task_make()
+	{
+		int sz = @.cli_args.count();
+		string module_name = @.cli_args.get(2, "");
+		BundlerController control = await BundlerController::getController();
+		Module module = control.findModuleByName(module_name);
+		
+		if (module_name == "")
+		{
+			control.writeln("Type module name:");
+			control.modules.each
+			(
+				void (Module item) use (control)
+				{
+					control.writeln("  " ~ item.module_name)
+				}
+			);
+			return;
+		}
+		else if (module == null)
+		{
+			control.writeln("Wrong module name " ~ module_name);
+			return;
+		}
+		
+		/* Run module build chain */
+		await control.chainBuildModuleByName(module_name);
+		
+		/* Build bundles */
+		Collection<Dict> build_items = control.config |> "bundles" |> default [];
+		for (int i=0; i<build_items.count(); i++)
+		{
+			Dict bundle_conf = build_items.item(i);
+			
+			/* Get modules */
+			Collection<string> build_modules = bundle_conf |> "modules" |> default Collection [];
+			
+			/* Find module name */
+			int pos = build_modules.indexOf(module_name);
+			if (pos != -1)
+			{
+				/* Make bundle */
+				await control.chainBundle(bundle_conf);
+			}
 		}
 	}
 	
@@ -218,41 +271,6 @@ class Tasks
 			/*static::make_link(module_path, assets_path, "es6");*/
 		}
 		
-	}
-	
-	
-	
-	/**
-	 * Make module
-	 */
-	@TaskMethod{ "alias": "make" }
-	static async void task_make()
-	{
-		int sz = @.cli_args.count();
-		string module_name = @.cli_args.get(2, "");
-		BundlerController control = await BundlerController::getController();
-		Module module = control.findModuleByName(module_name);
-		
-		if (module_name == "")
-		{
-			control.writeln("Type module name:");
-			control.modules.each
-			(
-				void (Module item) use (control)
-				{
-					control.writeln("  " ~ item.module_name)
-				}
-			);
-			return;
-		}
-		else if (module == null)
-		{
-			control.writeln("Wrong module name " ~ module_name);
-			return;
-		}
-		
-		/* Run module build chain */
-		await control.chainBuildModuleByName(module_name);
 	}
 	
 	
