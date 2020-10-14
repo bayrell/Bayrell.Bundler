@@ -68,8 +68,6 @@ static class Bundle extends Plugin
 	 */
 	static async ChainBundle bundle(BundlerController control, ChainBundle chain)
 	{
-		if (chain.lang != "es6") return [control, chain];
-		
 		Vector<string> assets_content = new Vector();
 		Collection<Module> modules = chain.modules;
 		

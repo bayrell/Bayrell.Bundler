@@ -173,6 +173,29 @@ class BundlerController extends CoreObject
 	/**
 	 * Run module build chain
 	 */
+	async void makeBundle(Dict bundle_conf)
+	{
+		/* Get modules */
+		Collection<string> modules = bundle_conf |> "modules" |> default Collection [];
+		
+		/* Build modules */
+		for (int j=0; j<modules.count(); j++)
+		{
+			string module_name = modules.item(j);
+			if (module_name[0] == "@") continue;
+			
+			await this.chainBuildModuleByName(module_name);
+		}
+		
+		/* Make bundle */
+		await this.chainBundle(bundle_conf);
+	}
+	
+	
+	
+	/**
+	 * Run module build chain
+	 */
 	async void bundleByModule(string module_name)
 	{
 		Module module = this.findModuleByName(module_name);
@@ -208,9 +231,9 @@ class BundlerController extends CoreObject
 			if (module_name[0] == "@")
 			{
 				module_name = rs::substr(module_name, 1);
-				var arr = rs::split("/", module_name, 1);
+				Collection arr = rs::split("/", module_name).filter( lib::equalNot("") );
 				module_name = arr[0];
-				string file_name = arr[1];
+				string file_name = rs::join("/", arr.slice(1));
 				
 				Module module = this.modules.findItem( lib::equalAttr("module_name", module_name) );
 				if (module != null)

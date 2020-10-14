@@ -111,29 +111,99 @@ class Tasks
 	static async void task_build()
 	{
 		Map<bool> builded_modules = new Map();
-		
-		/* Make all modules */
 		BundlerController control = await BundlerController::getController();
+		
+		string bundle_name = @.cli_args.get(2, "");
+		Collection<Dict> bundles = control.config |> "bundles" |> default [];
+		Dict find_bundle = null;
+		
+		if (bundle_name == "")
+		{
+			control.writeln("Type bundle name:");
+			bundles.each
+			(
+				void (Dict item) use (control)
+				{
+					if (item.has("name"))
+					{
+						control.writeln("  " ~ item["name"])
+					}
+				}
+			);
+		}
+		
+		/* Find bundle by name */
+		find_bundle = bundles.findItem( lib::equalAttr( "name", bundle_name ) );
+		if (find_bundle == null)
+		{
+			control.writeln("Wrong bundle name " ~ bundle_name);
+			return;
+		}
+		
+		/* Get bundle modules */
+		Collection<string> bundle_modules = find_bundle |> "modules" |> default Collection [];
+		
+		/* Make bundle modules */
 		for (int i=0; i<control.modules.count(); i++)
 		{
 			Module module = control.modules.item(i);
+			
+			/* Find module name */
+			int pos = bundle_modules.indexOf(module.module_name);
+			if (pos == -1) continue;
+			
 			await control.chainBuildModuleByName(module.module_name);
 			builded_modules.set(module.module_name, true);
 		}
 		
-		/* Build bundles */
-		Collection<Dict> build_items = control.config |> "bundles" |> default [];
-		for (int i=0; i<build_items.count(); i++)
+		/* Build modules */
+		for (int j=0; j<bundle_modules.count(); j++)
 		{
-			Dict bundle_conf = build_items.item(i);
+			string module_name = bundle_modules.item(j);
+			if (builded_modules.has(module_name)) continue;
+			if (module_name[0] == "@") continue;
+			
+			await control.chainBuildModuleByName(module_name);
+			builded_modules.set(module_name, true);
+		}
+		
+		/* Make bundle */
+		await control.chainBundle(find_bundle);
+	}
+	
+	
+	
+	/**
+	 * Build project
+	 */
+	@TaskMethod{ "alias": "build_all" }
+	static async void task_build_all()
+	{
+		Map<bool> builded_modules = new Map();
+		BundlerController control = await BundlerController::getController();
+		Collection<Dict> bundles = control.config |> "bundles" |> default [];
+		
+		/* Make all modules */
+		for (int i=0; i<control.modules.count(); i++)
+		{
+			Module module = control.modules.item(i);
+			
+			await control.chainBuildModuleByName(module.module_name);
+			builded_modules.set(module.module_name, true);
+		}
+		
+		/* Build all bundles */
+		for (int i=0; i<bundles.count(); i++)
+		{
+			Dict bundle_conf = bundles.item(i);
 			
 			/* Get modules */
-			Collection<string> build_modules = bundle_conf |> "modules" |> default Collection [];
+			Collection<string> bundle_modules = bundle_conf |> "modules" |> default Collection [];
 			
 			/* Build modules */
-			for (int j=0; j<build_modules.count(); j++)
+			for (int j=0; j<bundle_modules.count(); j++)
 			{
-				string module_name = build_modules.item(j);
+				string module_name = bundle_modules.item(j);
 				if (builded_modules.has(module_name)) continue;
 				if (module_name[0] == "@") continue;
 				
