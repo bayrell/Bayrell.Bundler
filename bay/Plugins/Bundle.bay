@@ -104,6 +104,12 @@ static class Bundle extends Plugin
 						file_path = fs::concat(module_path, "es6", file_name) ~ ".js";
 					}
 					
+					/* Check file */
+					if (not static::checkFile(chain, file_path))
+					{
+						continue;
+					}
+					
 					/* Read file */
 					bool file_exists = await fs::exists(file_path, @.base_path);
 					if (file_exists)
@@ -119,6 +125,12 @@ static class Bundle extends Plugin
 			{
 				string file_path = module.getPath();
 				
+				/* Check file */
+				if (not static::checkFile(chain, file_path))
+				{
+					continue;
+				}
+				
 				/* Read file */
 				bool file_exists = await fs::exists(file_path, @.base_path);
 				if (file_exists)
@@ -132,6 +144,19 @@ static class Bundle extends Plugin
 		chain <= bundle_content <= rs::join("\n", assets_content);
 		
 		return [control, chain];
+	}
+	
+	
+	
+	/**
+	 * Check file
+	 */
+	pure bool checkFile(ChainBundle chain, string file_path)
+	{
+		string ext = rs::extname(file_path);
+		if (chain.lang == "es6" and ext == "js") return true;
+		if (chain.lang == "css" and ext == "css") return true;
+		return false;
 	}
 	
 	
