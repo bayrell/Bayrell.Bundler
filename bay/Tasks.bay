@@ -30,6 +30,7 @@ use Bayrell.Bundler.ChainModule;
 use Bayrell.Bundler.BundlerController;
 use Bayrell.Bundler.Inotify;
 use Bayrell.Bundler.Module;
+use Bayrell.Lang.ModuleDescription as BayrellLangModuleDescription;
 
 
 @TaskList{}
@@ -343,6 +344,17 @@ class Tasks
 		
 	}
 	
+	
+	
+	/**
+	 * Version
+	 */
+	@TaskMethod{ "alias": "version" }
+	static async void version()
+	{
+		BundlerController control = await BundlerController::getController();
+		control.writeln("Version: " ~ BayrellLangModuleDescription::getModuleVersion());
+	}
 	
 }
 
