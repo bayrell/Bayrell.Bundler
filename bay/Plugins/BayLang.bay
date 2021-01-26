@@ -229,6 +229,7 @@ static class BayLang extends Plugin
 		bool enable_context = conf["enable_context"] |> default bool false;
 		bool enable_check_types = conf["enable_check_types"] |> default bool false;
 		bool enable_async_await = conf["enable_async_await"] |> default bool true;
+		bool enable_introspection = conf["enable_introspection"] |> default bool false;
 		bool emulate_async_await = conf["emulate_async_await"] |> default bool false;
 		bool use_module_name = conf["use_module_name"] |> default bool false;
 		bool use_strict = conf["use_strict"] |> default bool false;
@@ -242,6 +243,7 @@ static class BayLang extends Plugin
 				"frontend": frontend,
 				"enable_context": enable_context,
 				"enable_check_types": enable_check_types,
+				"enable_introspection": enable_introspection,
 			};
 		}
 		if (lang == "es6")
@@ -254,6 +256,7 @@ static class BayLang extends Plugin
 				"enable_context": enable_context,
 				"enable_check_types": enable_check_types,
 				"enable_async_await": enable_async_await,
+				"enable_introspection": enable_introspection,
 				"emulate_async_await": emulate_async_await,
 				"use_module_name": use_module_name,
 				"use_strict": use_strict,
@@ -269,6 +272,7 @@ static class BayLang extends Plugin
 				"enable_context": enable_context,
 				"enable_check_types": enable_check_types,
 				"enable_async_await": enable_async_await,
+				"enable_introspection": enable_introspection,
 				"emulate_async_await": emulate_async_await,
 				"use_module_name": use_module_name,
 				"use_strict": use_strict,
