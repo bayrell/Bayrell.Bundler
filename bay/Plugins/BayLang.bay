@@ -29,6 +29,7 @@ use Bayrell.Bundler.BundlerController;
 use Bayrell.Bundler.ChainFile;
 use Bayrell.Bundler.Plugin;
 use Bayrell.Lang.Exceptions.ParserError;
+use Bayrell.Lang.Exceptions.DeclaredClass;
 use Bayrell.Lang.LangBay.ParserBay;
 use Bayrell.Lang.LangES6.TranslatorES6;
 use Bayrell.Lang.LangNode.TranslatorNode;
@@ -128,6 +129,11 @@ static class BayLang extends Plugin
 			var ast = LangUtils::parse(parser, file.content);
 			file <= ast <= ast;
 		}
+		catch (DeclaredClass e)
+		{
+			file <= ast <= null;
+			file <= parse_error <= e;
+		}
 		catch (ParserError e)
 		{
 			file <= parse_error <= e;
@@ -159,9 +165,22 @@ static class BayLang extends Plugin
 			
 			/* Get destination path */
 			string file_path = static::getDestFilePath(control, file, lang);
+			bool is_skip = false;
+			string content = "";
 			
-			/* Translate */
-			string content = LangUtils::translate(translator, file.ast);
+			try
+			{
+				/* Translate */
+				content = LangUtils::translate(translator, file.ast);
+			}
+			catch (DeclaredClass e)
+			{
+				is_skip = true;
+			}
+			if (is_skip)
+			{
+				continue;
+			}
 			
 			/* Save to file */
 			string dir_name = rs::dirname(file_path);
