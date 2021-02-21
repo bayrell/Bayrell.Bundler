@@ -30,7 +30,9 @@ use Bayrell.Bundler.ChainModule;
 use Bayrell.Bundler.BundlerController;
 use Bayrell.Bundler.Inotify;
 use Bayrell.Bundler.Module;
+use Bayrell.Bundler.ModuleDescription as BundlerModuleDescription;
 use Bayrell.Lang.ModuleDescription as BayrellLangModuleDescription;
+use Runtime.ModuleDescription as RuntimeModuleDescription;
 
 
 @TaskList{}
@@ -353,7 +355,9 @@ class Tasks
 	static async void version()
 	{
 		BundlerController control = await BundlerController::getController();
-		control.writeln("Version: " ~ BayrellLangModuleDescription::getModuleVersion());
+		control.writeln("Lang version: " ~ BayrellLangModuleDescription::getModuleVersion());
+		control.writeln("Bundler version: " ~ BundlerModuleDescription::getModuleVersion());
+		control.writeln("Runtime version: " ~ RuntimeModuleDescription::getModuleVersion());
 	}
 	
 }
