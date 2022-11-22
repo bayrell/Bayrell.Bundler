@@ -82,7 +82,7 @@ static class Bundle extends Plugin
 				string module_json_path = fs::concat(module_path, "module.json");
 				
 				/* Read module.json */
-				Dict module_json = await fs::readFile(module_json_path, "utf8", @.base_path)
+				Dict module_json = await fs::readFile(module_json_path, @.base_path, "utf8")
 					|> rtl::json_decode
 					|> default {}
 				;
@@ -114,7 +114,7 @@ static class Bundle extends Plugin
 					bool file_exists = await fs::exists(file_path, @.base_path);
 					if (file_exists)
 					{
-						string file_content = await fs::readFile(file_path, "utf8", @.base_path);
+						string file_content = await fs::readFile(file_path, @.base_path, "utf8");
 						if (file_content != "") assets_content.push(file_content);
 					}
 				}
@@ -135,7 +135,7 @@ static class Bundle extends Plugin
 				bool file_exists = await fs::exists(file_path, @.base_path);
 				if (file_exists)
 				{
-					string file_content = await fs::readFile(file_path, "utf8", @.base_path);
+					string file_content = await fs::readFile(file_path, @.base_path, "utf8");
 					if (file_content != "") assets_content.push(file_content);
 				}
 			}
@@ -174,7 +174,7 @@ static class Bundle extends Plugin
 		await fs::mkdir(file_dest_dir_name, @.base_path);
 		
 		/* Save file */
-		await fs::saveFile(file_dest_path, bundle_content, "utf8", @.base_path);
+		await fs::saveFile(file_dest_path, bundle_content, @.base_path, "utf8");
 		
 		/* Output */
 		control.writeln( "Bundle to => " ~ file_dest_path );

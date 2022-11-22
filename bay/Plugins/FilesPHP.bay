@@ -87,7 +87,7 @@ static class FilesPHP extends Plugin
 		if (file.content != "") return [control, file];
 		
 		/* Read file */
-		string content = await fs::readFile(file.file_path, "utf8", @.base_path);
+		string content = await fs::readFile(file.file_path, @.base_path, "utf8");
 		file <= content <= content;
 		
 		return [control, file]
@@ -115,7 +115,7 @@ static class FilesPHP extends Plugin
 			/* Save to file */
 			string dir_name = rs::dirname(file_path);
 			await fs::mkdir(dir_name, @.base_path);
-			await fs::saveFile(file_path, file.content, "utf8", @.base_path);
+			await fs::saveFile(file_path, file.content, @.base_path, "utf8");
 			if (control.log_files)
 			{
 				control.writeln( "=>" ~ fs::concat(@.base_path, file_path) );

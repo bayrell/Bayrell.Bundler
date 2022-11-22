@@ -145,7 +145,8 @@ class ModuleDescription implements ModuleDescriptionInterface
 		try
 		{
 			/* Read project.json from base path */
-			Dict json = await fs::readFile("project.json", "utf8", @.base_path) |> rtl::json_decode |> default {};
+			Dict json = await fs::readFile("project.json", @.base_path, "utf8")
+				|> rtl::json_decode |> default {};
 			
 			/* Set config */
 			c <= settings <= config <= "Bayrell.Bundler" <= json;
@@ -163,6 +164,7 @@ class ModuleDescription implements ModuleDescriptionInterface
 		}
 		catch (var e)
 		{
+			log(e);
 		}
 		/* Start */
 		return await c::start(c);
